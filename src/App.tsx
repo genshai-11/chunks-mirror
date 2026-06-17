@@ -137,6 +137,47 @@ export default function App() {
   }, [promotedResources])
 
   useEffect(() => {
+    // On mount, fetch remote audio items from Vercel Blob and merge into promotedResources
+    fetch('/api/list-audio')
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`list-audio ${r.status}`)))
+      .then((data: { items: Array<Record<string, unknown>> }) => {
+        if (!Array.isArray(data.items) || data.items.length === 0) return
+        setPromotedResources((current) => {
+          const localUrls = new Set(current.map((item) => item.audioUrl))
+          const newItems: ChunksAwareResource[] = data.items
+            .filter((item) => typeof item.url === 'string' && !localUrls.has(item.url as string))
+            .map((item, index) => ({
+              id: `blob-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
+              category: 'speech' as const,
+              sourceKind: 'tts' as const,
+              audioUrl: item.url as string,
+              textPrompt: typeof item.textPrompt === 'string' ? item.textPrompt : undefined,
+              soundPrompt: undefined,
+              label: ['blob', typeof item.language === 'string' ? item.language : 'xx'],
+              language: typeof item.language === 'string' ? item.language : undefined,
+              level: typeof item.level === 'number' ? item.level as 1 | 2 | 3 : 1,
+              form: typeof item.form === 'string' ? item.form as ChunksAwareResource['form'] : undefined,
+              durationMs: null,
+              approvalStatus: 'approved_resource' as const,
+              license: 'vercel blob',
+              provenanceUrl: '',
+              attribution: '',
+              provider: typeof item.provider === 'string' ? item.provider : 'tts',
+              voiceId: typeof item.voiceId === 'string' ? item.voiceId : '',
+              createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString().slice(0, 10),
+              mseFocus: 'sound' as const,
+              resistanceTag: 'blob',
+              lessonId: 'blob-library',
+              mirrorGoal: 'prosody' as const,
+            }))
+          if (newItems.length === 0) return current
+          return [...current, ...newItems]
+        })
+      })
+      .catch(() => { /* remote list unavailable, continue with local */ })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     const valid = new Set(preparedTexts.map((item) => item.tempId))
     setPreparedSelection((current) => current.filter((id) => valid.has(id)))
   }, [preparedTexts])
@@ -158,7 +199,26 @@ export default function App() {
     }
   }
 
+  async function uploadAudioToBlob(blob: Blob, metadata: object): Promise<string> {
+    const arrayBuffer = await blob.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+    let binary = ''
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i])
+    }
+    const audioBase64 = btoa(binary)
+    const res = await fetch('/api/upload-audio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64, contentType: blob.type || 'audio/mpeg', metadata }),
+    })
+    if (!res.ok) throw new Error(`upload-audio failed (${res.status})`)
+    const data = await res.json()
+    return data.url as string
+  }
+
   async function audioUrlToPersistableUrl(url: string): Promise<string> {
+    if (url.startsWith('https://')) return url
     if (!url.startsWith('blob:')) return url
     const blob = await fetch(url).then((res) => res.blob())
     return new Promise((resolve, reject) => {
@@ -384,12 +444,26 @@ export default function App() {
 
       try {
         const blob = await generateSpeech({ model, input: prepared.textPrompt })
-        const url = URL.createObjectURL(blob)
+        let audioUrl: string
+        try {
+          audioUrl = await uploadAudioToBlob(blob, {
+            textPrompt: prepared.textPrompt,
+            language: prepared.language,
+            level: prepared.level,
+            form: prepared.form,
+            provider: model,
+            voiceId: model,
+            createdAt: new Date().toISOString().slice(0, 10),
+          })
+        } catch {
+          // Fall back to local blob URL if upload fails
+          audioUrl = URL.createObjectURL(blob)
+        }
         setStaged((current) => [...current, {
           id: `b${Date.now()}${index}`,
           category: 'speech',
           sourceKind: 'tts',
-          audioUrl: url,
+          audioUrl,
           textPrompt: prepared.textPrompt,
           label: ['batch', prepared.language],
           language: prepared.language,
