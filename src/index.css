@@ -25,18 +25,18 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #070709;
-  --bg-elev: #0C0C0E;
-  --bg-panel: #121217;
-  --fg: #FFFFFF;
-  --fg-muted: #A1A1AA;
-  --line: #1A1A1E;
-  --line-strong: #23232C;
+  --bg: #F5F5F0;
+  --bg-elev: #EEEEE9;
+  --bg-panel: #E6E6E0;
+  --fg: #111110;
+  --fg-muted: #6B6B66;
+  --line: #D8D8D2;
+  --line-strong: #C4C4BE;
   --accent: #FF453A;
   --accent-press: #D9352D;
-  --success: #10B981;
+  --success: #0D9668;
   --on-accent: #FFFFFF;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {

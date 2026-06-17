@@ -99,7 +99,9 @@ export default function App() {
   const [libFilterCat, setLibFilterCat] = useState('')
   const [libFilterLang, setLibFilterLang] = useState('')
 
-  const [theme] = useState<ThemeMode>(() => getInitialTheme())
+  const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme())
+
+  const toggleTheme = () => setTheme((t) => t === 'dark' ? 'light' : 'dark')
   const [deletedResourceIds, setDeletedResourceIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -466,13 +468,13 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-[--bg] text-[--fg]">
-      <nav className="fixed left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[999px] border border-[--line-strong] bg-[#0C0C0E]/90 p-1 backdrop-blur">
+      <nav className="fixed left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[999px] border border-[--line-strong] bg-[--bg-elev]/90 p-1 backdrop-blur">
         {(['mirror', 'resources'] as const).map((item) => (
           <button
             key={item}
             onClick={() => setTab(item)}
             className={`rounded-[999px] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-all active:scale-[0.98] ${
-              tab === item ? 'bg-[--accent] text-white' : 'text-[--fg-muted] hover:text-white'
+              tab === item ? 'bg-[--accent] text-white' : 'text-[--fg-muted] hover:text-[--fg]'
             }`}
           >
             {item === 'mirror' ? 'Mirror Room' : 'Library'}
@@ -483,6 +485,24 @@ export default function App() {
             {staged.length}
           </span>
         )}
+        <div className="mx-1 h-4 w-px bg-[--line]" />
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-[--fg-muted] transition-colors hover:text-[--fg]"
+          title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+        >
+          {theme === 'dark' ? (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.6 2.6l1.1 1.1M10.3 10.3l1.1 1.1M2.6 11.4l1.1-1.1M10.3 3.7l1.1-1.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M11.5 8.5A5 5 0 015.5 2.5a5.5 5.5 0 100 9 5 5 0 006-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
       </nav>
 
       {tab === 'mirror' && (

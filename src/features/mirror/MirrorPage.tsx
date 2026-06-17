@@ -136,7 +136,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
 
         {/* Top bar */}
         <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 py-4">
-          <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[--fg-muted]">
+          <span className="font-mono text-sm font-black uppercase tracking-[0.18em] text-[--accent]">
             CHUNKS MIRROR
           </span>
           <div className="flex items-center gap-3">
