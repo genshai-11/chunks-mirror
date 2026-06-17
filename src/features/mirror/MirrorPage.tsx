@@ -30,7 +30,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const [current, setCurrent] = useState<ChunksAwareResource | null>(null)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [countdownPhase, setCountdownPhase] = useState<'O' | 'C' | null>(null)
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
 
   const playbackRef = useRef(new BrowserAudioPlaybackAdapter())
   const micRef = useRef(new BrowserMicRecordingAdapter())
@@ -143,12 +143,12 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
             <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[--fg-muted]">
               {pool.length} in pool
             </span>
-            {/* settings toggle — mobile only */}
+            {/* settings toggle — visible when panel is closed */}
             <button
               type="button"
               onClick={() => setPanelOpen(true)}
               aria-label="Open settings"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:border-[--accent] hover:text-white lg:hidden"
+              className={`flex h-8 w-8 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:border-[--accent] hover:text-white ${panelOpen ? 'lg:hidden' : ''}`}
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                 <circle cx="6.5" cy="6.5" r="2" stroke="currentColor" strokeWidth="1.4" />
@@ -241,11 +241,26 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           className="fixed inset-0 z-10 bg-black/60 lg:hidden"
         />
       )}
+
+      {/* Collapse tab — always visible on desktop when panel is closed */}
+      {!panelOpen && (
+        <button
+          type="button"
+          onClick={() => setPanelOpen(true)}
+          aria-label="Open setup panel"
+          className="hidden lg:flex items-center gap-1.5 self-center rounded-l-[8px] border border-r-0 border-[--line] bg-[--bg-elev] px-2 py-3 text-[--fg-muted] hover:text-white transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="font-mono text-[8px] uppercase tracking-[0.18em]" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Setup</span>
+        </button>
+      )}
+
       <aside
         className={[
-          'fixed inset-y-0 right-0 z-20 flex w-[268px] flex-col border-l border-[--line] bg-[--bg-elev] transition-transform duration-200',
-          'lg:relative lg:inset-auto lg:translate-x-0',
-          panelOpen ? 'translate-x-0' : 'translate-x-full',
+          'fixed inset-y-0 right-0 z-20 flex w-[268px] flex-col border-l border-[--line] bg-[--bg-elev] transition-all duration-200',
+          panelOpen ? 'translate-x-0 lg:relative lg:inset-auto' : 'translate-x-full lg:translate-x-full lg:w-0',
         ].join(' ')}
       >
         <div className="flex items-center justify-between border-b border-[--line] px-4 py-3">
@@ -253,11 +268,11 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           <button
             type="button"
             onClick={() => setPanelOpen(false)}
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:text-white lg:hidden"
-            aria-label="Close"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:text-white"
+            aria-label="Hide setup panel"
           >
             <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-              <path d="M1 1l7 7M8 1l-7 7" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M1 4.5h7M5 1.5l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
