@@ -151,7 +151,7 @@ export default function LibraryPanel({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--accent]">Sound Library</div>
-            <h2 className="mt-1 text-xl tracking-[-0.03em] text-white">Manage playable resources</h2>
+            <h2 className="mt-1 text-xl tracking-[-0.03em] text-[--fg]">Manage playable resources</h2>
           </div>
           <div className="flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">
             <Badge>{resources.length} approved</Badge>
@@ -170,7 +170,7 @@ export default function LibraryPanel({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search prompt, animal, language, provider"
-              className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-white outline-none focus:border-[--accent]"
+              className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg] outline-none focus:border-[--accent]"
             />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -196,7 +196,7 @@ export default function LibraryPanel({
           <Select label="Form" value={formFilter} onChange={(value) => setFormFilter(value as LibraryForm)} options={FORM_ORDER.map((value) => ({ value, label: value }))} />
           <label className="block space-y-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Limit</span>
-            <input type="number" min={6} max={120} value={pageSize} onChange={(event) => setPageSize(Math.max(6, Math.min(120, Number(event.target.value) || 24)))} className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-white outline-none focus:border-[--accent]" />
+            <input type="number" min={6} max={120} value={pageSize} onChange={(event) => setPageSize(Math.max(6, Math.min(120, Number(event.target.value) || 24)))} className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg] outline-none focus:border-[--accent]" />
           </label>
         </div>
 
@@ -238,7 +238,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="block space-y-2">
       <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-white outline-none focus:border-[--accent]">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg] outline-none focus:border-[--accent]">
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </label>
@@ -247,10 +247,10 @@ function Select({ label, value, onChange, options }: { label: string; value: str
 
 function ActionButton({ children, onClick, disabled, tone = 'default' }: { children: ReactNode; onClick: () => void; disabled?: boolean; tone?: 'default' | 'danger' | 'success' }) {
   const toneClass = tone === 'danger'
-    ? 'border-[--accent] text-[--accent] hover:bg-[--accent] hover:text-white'
+    ? 'border-[--accent] text-[--accent] hover:bg-[--accent] hover:text-[--fg]'
     : tone === 'success'
       ? 'border-emerald-400/50 text-emerald-300 hover:bg-emerald-400 hover:text-black'
-      : 'border-[--line] text-[--fg-muted] hover:border-white hover:text-white'
+      : 'border-[--line] text-[--fg-muted] hover:border-[--fg] hover:text-[--fg]'
 
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`rounded-[999px] border px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-all active:scale-[0.98] disabled:opacity-30 ${toneClass}`}>
@@ -274,7 +274,7 @@ function ResourceRow({ item, selected, onToggleSelect, onPlay, onDelete, onPromo
   return (
     <div className={`grid gap-3 px-4 py-3 md:grid-cols-[auto_auto_minmax(0,1fr)_160px_auto] md:items-center ${selected ? 'bg-[--accent]/10' : 'hover:bg-white/[0.02]'}`}>
       <input type="checkbox" checked={selected} onChange={onToggleSelect} aria-label={`Select ${item._text}`} style={{ accentColor: 'var(--accent)' }} />
-      <button type="button" onClick={() => item.audioUrl && onPlay(item.audioUrl, item.id)} disabled={!item.audioUrl} className="flex h-9 w-9 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:border-[--accent] hover:text-white disabled:opacity-30" title="Play">
+      <button type="button" onClick={() => item.audioUrl && onPlay(item.audioUrl, item.id)} disabled={!item.audioUrl} className="flex h-9 w-9 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:border-[--accent] hover:text-[--fg] disabled:opacity-30" title="Play">
         <svg width="8" height="9" viewBox="0 0 7 8" fill="currentColor"><path d="M0 0 L7 4 L0 8 Z" /></svg>
       </button>
       <div className="min-w-0">
@@ -285,7 +285,7 @@ function ResourceRow({ item, selected, onToggleSelect, onPlay, onDelete, onPromo
           <span>{item._form}</span>
           <span>L{item.level ?? '?'}</span>
         </div>
-        <div className="mt-1 truncate text-sm text-white">{item._text}</div>
+        <div className="mt-1 truncate text-sm text-[--fg]">{item._text}</div>
       </div>
       <div className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-[--fg-muted]">{(item.provider || 'local').replace('edge-tts/', '')}</div>
       <div className="flex flex-wrap gap-2 md:justify-end">

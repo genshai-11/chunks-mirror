@@ -127,7 +127,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
     : phase === 'waitingNext' ? 'READY'
     : ''
 
-  const phaseAccent = isRecording ? 'text-[--accent]' : isListening ? 'text-white' : 'text-[--fg-muted]'
+  const phaseAccent = isRecording ? 'text-[--accent]' : isListening ? 'text-[--fg]' : 'text-[--fg-muted]'
 
   return (
     <main className="flex min-h-[100dvh] bg-[--bg] text-[--fg]">
@@ -148,7 +148,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
               type="button"
               onClick={() => setPanelOpen(true)}
               aria-label="Open settings"
-              className={`flex h-8 w-8 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:border-[--accent] hover:text-white ${panelOpen ? 'lg:hidden' : ''}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:border-[--accent] hover:text-[--fg] ${panelOpen ? 'lg:hidden' : ''}`}
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                 <circle cx="6.5" cy="6.5" r="2" stroke="currentColor" strokeWidth="1.4" />
@@ -173,8 +173,8 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
             isRecording
               ? 'border-[--accent] bg-[--accent]/[0.08] shadow-[0_0_0_1px_rgba(255,69,58,0.2),0_32px_80px_-40px_rgba(255,69,58,0.7)]'
               : isActive
-              ? 'border-white/15 bg-[#0C0C0E] shadow-[0_32px_80px_-40px_rgba(255,255,255,0.12)]'
-              : 'border-[--line-strong] bg-[#0C0C0E] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_32px_100px_-60px_rgba(0,0,0,0.9)] hover:border-[--accent]',
+              ? 'border-[--fg]/15 bg-[--bg-elev] shadow-[0_32px_80px_-40px_rgba(255,255,255,0.12)]'
+              : 'border-[--line-strong] bg-[--bg-elev] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_32px_100px_-60px_rgba(0,0,0,0.9)] hover:border-[--accent]',
           ].join(' ')}
         >
           {/* recording pulse ring */}
@@ -186,7 +186,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
 
           {/* content */}
           {countdown !== null && countdownPhase ? (
-            <span className={`relative font-mono text-7xl font-black tabular-nums leading-none ${countdownPhase === 'C' ? 'text-[--accent]' : 'text-white'}`}>
+            <span className={`relative font-mono text-7xl font-black tabular-nums leading-none ${countdownPhase === 'C' ? 'text-[--accent]' : 'text-[--fg]'}`}>
               {countdown}
             </span>
           ) : showWave ? (
@@ -213,7 +213,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
               <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[--fg-muted]">
                 {[current.language?.toUpperCase(), `L${current.level}`, current.form].filter(Boolean).join(' · ')}
               </div>
-              <p className="text-xl italic leading-relaxed text-white/80">
+              <p className="text-xl italic leading-relaxed text-[--fg]/80">
                 &ldquo;{current.textPrompt || current.soundPrompt || '…'}&rdquo;
               </p>
             </>
@@ -248,7 +248,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           type="button"
           onClick={() => setPanelOpen(true)}
           aria-label="Open setup panel"
-          className="hidden lg:flex items-center gap-1.5 self-center rounded-l-[8px] border border-r-0 border-[--line] bg-[--bg-elev] px-2 py-3 text-[--fg-muted] hover:text-white transition-colors"
+          className="hidden lg:flex items-center gap-1.5 self-center rounded-l-[8px] border border-r-0 border-[--line] bg-[--bg-elev] px-2 py-3 text-[--fg-muted] hover:text-[--fg] transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -268,7 +268,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           <button
             type="button"
             onClick={() => setPanelOpen(false)}
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:text-white"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-[--line] text-[--fg-muted] hover:text-[--fg]"
             aria-label="Hide setup panel"
           >
             <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
@@ -287,7 +287,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   key={m}
                   type="button"
                   onClick={() => set('mode', m)}
-                  className={`rounded-[6px] py-1.5 font-mono text-[9px] uppercase tracking-[0.14em] transition-colors ${settings.mode === m ? 'bg-[--accent] text-white' : 'text-[--fg-muted] hover:text-white'}`}
+                  className={`rounded-[6px] py-1.5 font-mono text-[9px] uppercase tracking-[0.14em] transition-colors ${settings.mode === m ? 'bg-[--accent] text-white' : 'text-[--fg-muted] hover:text-[--fg]'}`}
                 >
                   {m}
                 </button>
@@ -314,7 +314,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   className={`rounded-[999px] border px-2.5 py-1 font-mono text-[8px] uppercase tracking-[0.1em] transition-all ${
                     (settings.category ?? '') === (opt.value ?? '')
                       ? 'border-[--accent] bg-[--accent] text-white'
-                      : 'border-[--line] text-[--fg-muted] hover:border-white/30 hover:text-white'
+                      : 'border-[--line] text-[--fg-muted] hover:border-[--fg]/30 hover:text-[--fg]'
                   }`}
                 >
                   {opt.label}
@@ -328,7 +328,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
             <select
               value={settings.language ?? ''}
               onChange={(e) => set('language', e.target.value)}
-              className="w-full rounded-[7px] border border-[--line] bg-[--bg] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-white outline-none focus:border-[--accent]"
+              className="w-full rounded-[7px] border border-[--line] bg-[--bg] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-[--fg] outline-none focus:border-[--accent]"
             >
               <option value="">All languages</option>
               {availableLangs.map((lang) => (
@@ -348,7 +348,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   className={`flex-1 rounded-[7px] border py-1.5 font-mono text-[9px] uppercase tracking-[0.1em] transition-all ${
                     String(settings.level ?? '') === val
                       ? 'border-[--accent] bg-[--accent] text-white'
-                      : 'border-[--line] text-[--fg-muted] hover:text-white'
+                      : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
                   }`}
                 >
                   {lbl}
@@ -368,7 +368,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   className={`flex-1 rounded-[7px] border py-1.5 font-mono text-[8px] uppercase tracking-[0.08em] transition-all ${
                     (settings.sentenceForm ?? 'all') === f
                       ? 'border-[--accent] bg-[--accent] text-white'
-                      : 'border-[--line] text-[--fg-muted] hover:text-white'
+                      : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
                   }`}
                 >
                   {f === 'all' ? 'All' : f.slice(0, 3)}
@@ -394,7 +394,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           {/* Pool pill */}
           <div className="rounded-[10px] border border-[--line] bg-[--bg] px-4 py-3">
             <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-[--fg-muted]">Pool</div>
-            <div className="mt-0.5 font-mono text-3xl font-black tabular-nums text-white">{pool.length}</div>
+            <div className="mt-0.5 font-mono text-3xl font-black tabular-nums text-[--fg]">{pool.length}</div>
             <div className="mt-0.5 font-mono text-[7px] uppercase tracking-[0.1em] text-[--fg-muted]">resources available</div>
           </div>
 
@@ -421,13 +421,13 @@ function TimingControl({ label, value, onChange }: { label: string; value: numbe
         <button
           type="button"
           onClick={() => onChange(Math.max(1, value - 1))}
-          className="font-mono text-base leading-none text-[--fg-muted] hover:text-white"
+          className="font-mono text-base leading-none text-[--fg-muted] hover:text-[--fg]"
         >−</button>
-        <span className="flex-1 text-center font-mono text-sm tabular-nums text-white">{value}s</span>
+        <span className="flex-1 text-center font-mono text-sm tabular-nums text-[--fg]">{value}s</span>
         <button
           type="button"
           onClick={() => onChange(Math.min(15, value + 1))}
-          className="font-mono text-base leading-none text-[--fg-muted] hover:text-white"
+          className="font-mono text-base leading-none text-[--fg-muted] hover:text-[--fg]"
         >+</button>
       </div>
     </div>

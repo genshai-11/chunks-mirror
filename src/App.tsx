@@ -520,7 +520,7 @@ export default function App() {
           <div className="mx-auto max-w-[1200px] space-y-6">
             <header className="border-b border-[--line] pb-6">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--accent]">Library Setup</div>
-              <h1 className="mt-2 max-w-[14ch] text-4xl tracking-[-0.06em] text-white md:text-5xl md:leading-none">Prepare sounds before the loop.</h1>
+              <h1 className="mt-2 max-w-[14ch] text-4xl tracking-[-0.06em] text-[--fg] md:text-5xl md:leading-none">Prepare sounds before the loop.</h1>
               <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-[--fg-muted]">
                 Generate texts, run TTS, then import to library. Mirror Room only plays from the approved library.
               </p>
@@ -531,7 +531,7 @@ export default function App() {
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-[--success]/30 bg-[--success]/[0.06] px-5 py-4">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--success]">Staged audio ready</div>
-                  <div className="mt-1 text-sm text-white">
+                  <div className="mt-1 text-sm text-[--fg]">
                     {staged.length} clip{staged.length !== 1 ? 's' : ''} waiting — import to library to use in Mirror Room.
                   </div>
                 </div>
@@ -550,7 +550,7 @@ export default function App() {
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--accent]">Generate text and audio</div>
-                  <h2 className="mt-2 text-2xl tracking-[-0.04em] text-white">Phase 1 prepares text. Phase 2 turns it into staged speech.</h2>
+                  <h2 className="mt-2 text-2xl tracking-[-0.04em] text-[--fg]">Phase 1 prepares text. Phase 2 turns it into staged speech.</h2>
                 </div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">
                   {resources.length} approved · {staged.length} staged · {pool.length} in pool
@@ -560,7 +560,7 @@ export default function App() {
               <div className="mt-5 grid gap-3 md:grid-cols-4">
                 <label className="space-y-2">
                   <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Level</span>
-                  <select value={batchLevel} onChange={(e) => setBatchLevel(Number(e.target.value) as 1 | 2 | 3)} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-white outline-none focus:border-[--accent]">
+                  <select value={batchLevel} onChange={(e) => setBatchLevel(Number(e.target.value) as 1 | 2 | 3)} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]">
                     <option value={1}>Level 1</option>
                     <option value={2}>Level 2</option>
                     <option value={3}>Level 3</option>
@@ -569,7 +569,7 @@ export default function App() {
 
                 <label className="space-y-2">
                   <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Form</span>
-                  <select value={batchForm} onChange={(e) => setBatchForm(e.target.value as 'short' | 'medium' | 'long')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-white outline-none focus:border-[--accent]">
+                  <select value={batchForm} onChange={(e) => setBatchForm(e.target.value as 'short' | 'medium' | 'long')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]">
                     <option value="short">Short</option>
                     <option value="medium">Medium</option>
                     <option value="long">Long</option>
@@ -578,33 +578,33 @@ export default function App() {
 
                 <label className="space-y-2">
                   <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Quantity</span>
-                  <input type="number" min={1} max={200} value={batchQty} onChange={(e) => setBatchQty(Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 10)))} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-white outline-none focus:border-[--accent]" />
+                  <input type="number" min={1} max={200} value={batchQty} onChange={(e) => setBatchQty(Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 10)))} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]" />
                 </label>
 
                 <label className="space-y-2">
                   <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Voice</span>
-                  <select value={autoVoice ? 'auto' : 'custom'} onChange={(e) => setAutoVoice(e.target.value === 'auto')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-white outline-none focus:border-[--accent]">
+                  <select value={autoVoice ? 'auto' : 'custom'} onChange={(e) => setAutoVoice(e.target.value === 'auto')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]">
                     <option value="auto">Auto voice</option>
                     <option value="custom">Custom model</option>
                   </select>
                 </label>
               </div>
 
-              {!autoVoice && <input value={batchModel} onChange={(e) => setBatchModel(e.target.value)} className="mt-3 w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-white outline-none focus:border-[--accent]" placeholder="el/eleven_multilingual_v2" />}
+              {!autoVoice && <input value={batchModel} onChange={(e) => setBatchModel(e.target.value)} className="mt-3 w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]" placeholder="el/eleven_multilingual_v2" />}
 
               <div className="mt-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">{batchSelectedLangs.length} / {ALL_LANGS.length} languages</span>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setBatchSelectedLangs(['vi', 'en', 'fr', 'zh', 'ja', 'ko'])} className="rounded-[999px] border border-[--line] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] transition-all hover:border-white hover:text-white active:scale-[0.98]">Top 6</button>
+                    <button onClick={() => setBatchSelectedLangs(['vi', 'en', 'fr', 'zh', 'ja', 'ko'])} className="rounded-[999px] border border-[--line] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] transition-all hover:border-[--fg] hover:text-[--fg] active:scale-[0.98]">Top 6</button>
                     <button onClick={() => setBatchSelectedLangs(ALL_LANGS)} className="rounded-[999px] border border-[--accent] bg-[--accent] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-white transition-all hover:bg-[--accent-press] active:scale-[0.98]">Select all</button>
-                    <button onClick={() => setBatchSelectedLangs([])} className="rounded-[999px] border border-[--line] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] transition-all hover:border-white hover:text-white active:scale-[0.98]">Clear</button>
+                    <button onClick={() => setBatchSelectedLangs([])} className="rounded-[999px] border border-[--line] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] transition-all hover:border-[--fg] hover:text-[--fg] active:scale-[0.98]">Clear</button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {ALL_LANGS.map((lang) => {
                     const active = batchSelectedLangs.includes(lang)
-                    return <button key={lang} onClick={() => setBatchSelectedLangs((current) => active ? current.filter((entry) => entry !== lang) : [...current, lang])} className={`rounded-[999px] border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-all active:scale-[0.98] ${active ? 'border-[--accent] bg-[--accent] text-white' : 'border-[--line] text-[--fg-muted] hover:text-white'}`}>{lang}</button>
+                    return <button key={lang} onClick={() => setBatchSelectedLangs((current) => active ? current.filter((entry) => entry !== lang) : [...current, lang])} className={`rounded-[999px] border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-all active:scale-[0.98] ${active ? 'border-[--accent] bg-[--accent] text-white' : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'}`}>{lang}</button>
                   })}
                 </div>
               </div>
@@ -623,8 +623,8 @@ export default function App() {
                     <div className="mt-1 text-sm text-[--fg-muted]">{preparedTexts.length} queued · {preparedLanguageCount} languages · {preparedSelection.length} selected</div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setPreparedSelection(preparedTexts.map((item) => item.tempId))} className="rounded-[999px] border border-[--line] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:text-white">Select all</button>
-                    <button onClick={() => setPreparedSelection([])} className="rounded-[999px] border border-[--line] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:text-white">Clear</button>
+                    <button onClick={() => setPreparedSelection(preparedTexts.map((item) => item.tempId))} className="rounded-[999px] border border-[--line] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:text-[--fg]">Select all</button>
+                    <button onClick={() => setPreparedSelection([])} className="rounded-[999px] border border-[--line] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:text-[--fg]">Clear</button>
                     <button onClick={() => deletePreparedTexts(preparedSelection)} disabled={preparedSelection.length === 0} className="rounded-[999px] bg-[--accent] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-white disabled:opacity-30">Remove selected</button>
                   </div>
                 </div>
@@ -636,14 +636,14 @@ export default function App() {
                         <input type="checkbox" checked={selected} onChange={() => setPreparedSelection((current) => current.includes(item.tempId) ? current.filter((id) => id !== item.tempId) : [...current, item.tempId])} style={{ accentColor: 'var(--accent)' }} />
                         <span className="font-mono text-[10px] uppercase text-[--accent]">{item.language}</span>
                         <span className="font-mono text-[10px] uppercase text-[--fg-muted]">{item.form}</span>
-                        <span className="text-sm text-white">{item.textPrompt}</span>
+                        <span className="text-sm text-[--fg]">{item.textPrompt}</span>
                         <button onClick={() => deletePreparedTexts([item.tempId])} className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:text-[--accent]">Remove</button>
                       </div>
                     )
                   })}
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <button onClick={runBatchTTS} className="rounded-[999px] bg-white px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-black transition-all hover:bg-[--accent] hover:text-white active:scale-[0.98]">Run TTS ({preparedTexts.length})</button>
+                  <button onClick={runBatchTTS} className="rounded-[999px] bg-[--fg] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[--bg] transition-all hover:bg-[--accent] hover:text-white active:scale-[0.98]">Run TTS ({preparedTexts.length})</button>
                   {batchProgress && (
                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">
                       {batchProgress.message}
