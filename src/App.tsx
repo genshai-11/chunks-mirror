@@ -98,6 +98,7 @@ export default function App() {
 
   const [libFilterCat, setLibFilterCat] = useState('')
   const [libFilterLang, setLibFilterLang] = useState('')
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null)
 
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme())
 
@@ -540,6 +541,55 @@ export default function App() {
 
   const importAllStaged = () => promoteStagedItems(staged.map((item) => ({ ...item, _staged: true })))
 
+  async function syncToCloud() {
+    // Find all local resources that are NOT already on Vercel Blob (https://)
+    const localItems = promotedResources.filter(
+      (item) => item.audioUrl && !item.audioUrl.startsWith('https://')
+    )
+    if (localItems.length === 0) {
+      setLog('All resources already synced to cloud.')
+      return
+    }
+    if (!window.confirm(`Upload ${localItems.length} local audio files to cloud?\nThis may take a while.`)) return
+
+    setSyncProgress({ current: 0, total: localItems.length })
+    let ok = 0
+    const updated: ChunksAwareResource[] = []
+
+    for (let i = 0; i < localItems.length; i++) {
+      const item = localItems[i]
+      setSyncProgress({ current: i + 1, total: localItems.length })
+      try {
+        // Convert data URL or blob URL to Blob
+        const audioBlob = await fetch(item.audioUrl!).then((r) => r.blob())
+        const cloudUrl = await uploadAudioToBlob(audioBlob, {
+          textPrompt: item.textPrompt,
+          language: item.language,
+          level: item.level,
+          form: item.form,
+          provider: item.provider,
+          voiceId: item.voiceId,
+          createdAt: item.createdAt,
+        })
+        updated.push({ ...item, audioUrl: cloudUrl })
+        ok++
+      } catch {
+        updated.push(item) // keep original on failure
+      }
+      await new Promise((r) => setTimeout(r, 50))
+    }
+
+    // Replace updated items in promotedResources
+    if (updated.length > 0) {
+      const updatedMap = new Map(updated.map((item) => [item.id, item]))
+      setPromotedResources((current) =>
+        current.map((item) => updatedMap.get(item.id!) || item)
+      )
+    }
+    setSyncProgress(null)
+    setLog(`✓ ${ok}/${localItems.length} files synced to cloud.`)
+  }
+
   return (
     <div className="min-h-[100dvh] bg-[--bg] text-[--fg]">
       <nav className="fixed left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[999px] border border-[--line-strong] bg-[--bg-elev]/90 p-1 backdrop-blur">
@@ -593,11 +643,31 @@ export default function App() {
         <main className="min-h-[100dvh] bg-[--bg] px-4 py-20 text-[--fg] md:px-6 lg:px-8">
           <div className="mx-auto max-w-[1200px] space-y-6">
             <header className="border-b border-[--line] pb-6">
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--accent]">Library Setup</div>
-              <h1 className="mt-2 max-w-[14ch] text-4xl tracking-[-0.06em] text-[--fg] md:text-5xl md:leading-none">Prepare sounds before the loop.</h1>
-              <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-[--fg-muted]">
-                Generate texts, run TTS, then import to library. Mirror Room only plays from the approved library.
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--accent]">Library Setup</div>
+                  <h1 className="mt-2 max-w-[14ch] text-4xl tracking-[-0.06em] text-[--fg] md:text-5xl md:leading-none">Prepare sounds before the loop.</h1>
+                  <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-[--fg-muted]">
+                    Generate texts, run TTS, then import to library. Mirror Room only plays from the approved library.
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2 pt-1">
+                  <button
+                    onClick={syncToCloud}
+                    disabled={syncProgress !== null}
+                    className="rounded-[999px] border border-[--line] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[--fg-muted] transition-all hover:border-[--accent] hover:text-[--accent] active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {syncProgress
+                      ? `Syncing ${syncProgress.current}/${syncProgress.total}…`
+                      : `↑ Sync to cloud (${promotedResources.filter((r) => r.audioUrl && !r.audioUrl.startsWith('https://')).length})`}
+                  </button>
+                  {syncProgress === null && (
+                    <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[--fg-muted]">
+                      {promotedResources.filter((r) => r.audioUrl?.startsWith('https://')).length} already on cloud
+                    </span>
+                  )}
+                </div>
+              </div>
             </header>
 
             {/* Staged items import banner */}
