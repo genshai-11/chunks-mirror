@@ -9,6 +9,8 @@ dist/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+api/*.js
+api/*.d.ts
 .pi/
 mcps/
 __pycache__/
