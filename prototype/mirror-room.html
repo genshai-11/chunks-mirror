@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PROTOTYPE · Chunks Mirror Room</title>
+<!--
+  THROWAWAY PROTOTYPE — not production. Question it answers:
+  "Does the one-button G→O→C loop + dynamic room settings feel right?"
+  Stand-ins: browser speechSynthesis replaces 9router TTS; synthesized tones
+  replace real SFX; mic capture is best-effort. Real build = React/Vite + 9router.
+  Open directly in Chrome/Edge. Allow mic when asked (optional).
+-->
+<style>
+  :root{
+    --bg:#0A0A0B; --elev:#141416; --fg:#FAFAFA; --muted:#A1A1AA; --line:#27272A;
+    --accent:#E10600; --accentPress:#B80500; --onAccent:#fff; --r-pill:999px;
+    --ease:cubic-bezier(.16,1,.3,1);
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Geist","Satoshi",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100dvh}
+  .top{display:flex;align-items:center;justify-content:space-between;
+    padding:16px 22px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em}
+  .logo{background:var(--accent);color:#fff;font-weight:800;letter-spacing:.04em;
+    font-size:12px;padding:4px 8px;border-radius:4px}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+
+  /* Dynamic Settings bar — present but quiet, above the button */
+  .settings{border-bottom:1px solid var(--line);background:var(--elev)}
+  .settings .row{max-width:920px;margin:0 auto;display:flex;flex-wrap:wrap;gap:14px 22px;
+    align-items:center;padding:14px 22px}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  select,input[type=number]{background:var(--bg);color:var(--fg);border:1px solid var(--line);
+    border-radius:6px;padding:7px 9px;font-family:var(--sans);font-size:13px;min-width:96px}
+  input[type=number]{width:74px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden}
+  .seg button{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;
+    letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg);cursor:pointer;user-select:none}
+  .chk input{accent-color:var(--accent);width:16px;height:16px}
+
+  /* Stage */
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:40px 20px}
+  .item{text-align:center;min-height:64px;max-width:680px}
+  .item .lang{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  .item .txt{font-size:26px;letter-spacing:-.02em;margin-top:8px;line-height:1.2}
+  .item .cat{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+
+  .dial{position:relative;width:248px;height:248px}
+  .dial svg{transform:rotate(-90deg)}
+  .ring-bg{stroke:var(--line)} .ring-fg{stroke:var(--accent);transition:stroke-dashoffset .1s linear}
+  .btn{position:absolute;inset:0;margin:auto;width:188px;height:188px;border-radius:50%;
+    border:none;cursor:pointer;background:var(--accent);color:#fff;font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    transition:transform .12s var(--ease),background .2s}
+  .btn:active{transform:scale(.97)}
+  .btn.idle{background:var(--accent)}
+  .btn.O{background:#141416;border:1px solid var(--accent)}
+  .btn.C{background:#141416;border:1px solid var(--fg)}
+  .btn .phase{font-family:var(--mono);font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+  .btn .count{font-family:var(--mono);font-size:46px;font-weight:700;line-height:1}
+  .btn .hint{font-size:11px;color:rgba(255,255,255,.7)}
+  .btn.O .hint,.btn.C .hint{color:var(--muted)}
+  .recdot{width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block}
+  .recdot.on{animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .controls{display:flex;gap:12px;align-items:center;min-height:44px}
+  .ghost{background:none;border:1px solid var(--line);color:var(--fg);border-radius:var(--r-pill);
+    padding:10px 20px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+  .ghost:disabled{opacity:.35;cursor:not-allowed}
+  .ghost.accent{border-color:var(--accent);color:#fff;background:var(--accent)}
+  .copyback{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+  footer{border-top:1px solid var(--line);padding:10px 22px;font-family:var(--mono);font-size:10px;color:var(--muted);
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .log{max-height:0;overflow:hidden}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand"><span class="logo">CHUNKS</span> Mirror Room</div>
+    <div class="tag">prototype · G → O → C</div>
+  </div>
+
+  <!-- DYNAMIC SETTINGS (the part Lucy wanted to play with) -->
+  <div class="settings">
+    <div class="row">
+      <div class="fld">
+        <label>Mode</label>
+        <div class="seg" id="seg-mode">
+          <button data-v="auto" aria-pressed="true">Auto</button>
+          <button data-v="manual" aria-pressed="false">Manual</button>
+        </div>
+      </div>
+      <div class="fld"><label>O · play (s)</label><input id="gTime" type="number" min="1" max="15" step="1" value="3"></div>
+      <div class="fld"><label>C · copy (s)</label><input id="cTime" type="number" min="1" max="15" step="1" value="3"></div>
+      <div class="fld"><label>Category</label>
+        <select id="fCat"><option value="">all</option><option>speech</option><option>sfx_animal</option><option>sfx_nature</option><option>music_snippet</option></select>
+      </div>
+      <div class="fld"><label>Language</label><select id="fLang"></select></div>
+      <div class="fld"><label>Level</label>
+        <select id="fLevel"><option value="">all</option><option>1</option><option>2</option><option>3</option></select>
+      </div>
+      <div class="fld"><label>Flow</label>
+        <label class="chk"><input type="checkbox" id="mix"> Random mix</label>
+        <label class="chk"><input type="checkbox" id="cue" checked> Ending cue</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="item" id="item">
+      <div class="lang" id="i-lang">—</div>
+      <div class="txt" id="i-txt">Tap to start the loop</div>
+      <div class="cat" id="i-cat"></div>
+    </div>
+
+    <div class="dial">
+      <svg width="248" height="248" viewBox="0 0 248 248">
+        <circle class="ring-bg" cx="124" cy="124" r="112" fill="none" stroke-width="4"/>
+        <circle class="ring-fg" id="ring" cx="124" cy="124" r="112" fill="none" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="703.7" stroke-dashoffset="703.7"/>
+      </svg>
+      <button class="btn idle" id="btn">
+        <span class="phase" id="b-phase">Start</span>
+        <span class="count" id="b-count"></span>
+        <span class="hint" id="b-hint">one button</span>
+      </button>
+    </div>
+
+    <div class="controls">
+      <button class="ghost" id="next" disabled>Next ▸</button>
+      <button class="ghost" id="stop" disabled>Stop</button>
+      <span class="copyback" id="copyback"></span>
+    </div>
+  </div>
+
+  <footer>
+    <span id="status">ready · auto mode · 3s / 3s</span>
+    <span id="srcnote">loading library…</span>
+  </footer>
+
+<script src="bank.js"></script>
+<script>
+/* ---------- resource bank: real generated LIBRARY (bank.js) + synthesized SFX ---------- */
+const FALLBACK = [
+  {cat:"speech", lang:"en", level:1, text:"Good morning"},
+  {cat:"speech", lang:"en", level:2, text:"I really appreciate it"},
+  {cat:"speech", lang:"vi", level:1, text:"Xin chào"},
+  {cat:"speech", lang:"vi", level:2, text:"Hẹn gặp lại bạn nhé"},
+  {cat:"speech", lang:"zh", level:1, text:"你好"},
+  {cat:"speech", lang:"zh", level:2, text:"很高兴认识你"},
+  {cat:"speech", lang:"fr", level:1, text:"Bonjour"},
+  {cat:"speech", lang:"fr", level:2, text:"Je t'en prie"},
+  {cat:"speech", lang:"ko", level:1, text:"안녕하세요"},
+  {cat:"speech", lang:"ja", level:1, text:"おはよう"},
+  {cat:"speech", lang:"ja", level:2, text:"よろしくお願いします"},
+  {cat:"speech", lang:"es", level:1, text:"Hola"},
+  {cat:"speech", lang:"de", level:1, text:"Guten Morgen"},
+  {cat:"speech", lang:"it", level:1, text:"Buongiorno"},
+  {cat:"speech", lang:"pt", level:1, text:"Bom dia"},
+  {cat:"speech", lang:"ru", level:1, text:"Здравствуйте"},
+  {cat:"speech", lang:"ar", level:1, text:"مرحبا"},
+  {cat:"speech", lang:"hi", level:1, text:"नमस्ते"},
+  {cat:"speech", lang:"th", level:1, text:"สวัสดี"},
+  {cat:"speech", lang:"id", level:1, text:"Selamat pagi"},
+  {cat:"sfx_animal", lang:"—", level:1, text:"Cat meow", tone:{type:"meow"}},
+  {cat:"sfx_animal", lang:"—", level:2, text:"Dog woof", tone:{type:"woof"}},
+  {cat:"sfx_nature", lang:"—", level:2, text:"Bird chirp", tone:{type:"chirp"}},
+  {cat:"music_snippet", lang:"—", level:1, text:"3-note motif", tone:{type:"motif"}},
+];
+const SFX_EXTRAS = FALLBACK.filter(b=>b.tone);                       // synthesized sfx/music placeholders
+const USING_LIBRARY = !!(window.LIBRARY && window.LIBRARY.length);    // bank.js present?
+const SPEECH = USING_LIBRARY ? window.LIBRARY : FALLBACK.filter(b=>!b.tone);
+const BANK = SPEECH.concat(SFX_EXTRAS);
+const LANGS = [...new Set(BANK.filter(b=>b.lang!=="—").map(b=>b.lang))];
+
+/* ---------- state ---------- */
+const S = { mode:"auto", running:false, phase:"idle", current:null, timer:null, raf:null, queue:[], i:0,
+            stream:null, recorder:null, chunks:[], lastCopyUrl:null, audio:null };
+const RING_LEN = 703.7;
+const $ = id => document.getElementById(id);
+
+/* language filter options */
+$("fLang").innerHTML = `<option value="">all</option>` + LANGS.map(l=>`<option>${l}</option>`).join("");
+
+/* ---------- settings wiring ---------- */
+$("seg-mode").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  S.mode=b.dataset.v;
+  [...$("seg-mode").children].forEach(x=>x.setAttribute("aria-pressed", x===b));
+  reflectStatus();
+});
+["gTime","cTime","fCat","fLang","fLevel","mix","cue"].forEach(id=>$(id).addEventListener("change",reflectStatus));
+function reflectStatus(){
+  $("status").textContent = `${S.running?"running":"ready"} · ${S.mode} mode · ${$("gTime").value}s / ${$("cTime").value}s`;
+}
+
+/* ---------- pool selection (filter + random mix) ---------- */
+function buildQueue(){
+  const cat=$("fCat").value, lang=$("fLang").value, lvl=$("fLevel").value;
+  let pool = BANK.filter(b =>
+    (!cat || b.cat===cat) && (!lang || b.lang===lang) && (!lvl || String(b.level)===lvl));
+  if(!pool.length) pool = BANK.slice();
+  if($("mix").checked) pool = pool.map(x=>[Math.sin(x.level*99+x.text.length),x]).sort((a,b)=>a[0]-b[0]).map(p=>p[1]);
+  S.queue = pool; S.i = 0;
+}
+
+/* ---------- audio: speech (stand-in for 9router) + synthesized SFX ---------- */
+const VOICE_LANG = {en:"en-US",vi:"vi-VN",zh:"zh-CN",fr:"fr-FR",ko:"ko-KR",ja:"ja-JP",es:"es-ES",
+  de:"de-DE",it:"it-IT",pt:"pt-BR",ru:"ru-RU",ar:"ar-SA",hi:"hi-IN",th:"th-TH",id:"id-ID"};
+let AC;
+function ac(){ return AC || (AC = new (window.AudioContext||window.webkitAudioContext)()); }
+function playSpeech(item){
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(item.text);
+    u.lang = VOICE_LANG[item.lang] || "en-US"; u.rate = .95;
+    const v = speechSynthesis.getVoices().find(v=>v.lang===u.lang) ||
+              speechSynthesis.getVoices().find(v=>v.lang.startsWith((u.lang||"en").slice(0,2)));
+    if(v) u.voice = v;
+    speechSynthesis.speak(u);
+  }catch(e){ beep(440,.2); }
+}
+function playTone(kind){
+  const c=ac(), t=c.currentTime;
+  const mk=(f,dur,type="sine",g=.18,at=t)=>{const o=c.createOscillator(),ga=c.createGain();
+    o.type=type;o.frequency.setValueAtTime(f,at);o.connect(ga);ga.connect(c.destination);
+    ga.gain.setValueAtTime(0,at);ga.gain.linearRampToValueAtTime(g,at+.02);
+    ga.gain.exponentialRampToValueAtTime(.0001,at+dur);o.start(at);o.stop(at+dur);return o;};
+  if(kind==="meow"){const o=mk(620,.5,"sawtooth");o.frequency.linearRampToValueAtTime(360,t+.5);}
+  else if(kind==="woof"){mk(180,.18,"square",.25);mk(140,.22,"square",.2,t+.12);}
+  else if(kind==="chirp"){for(let i=0;i<3;i++)mk(2200+i*180,.08,"sine",.12,t+i*.1);}
+  else if(kind==="motif"){[523,659,784].forEach((f,i)=>mk(f,.28,"triangle",.16,t+i*.18));}
+  else beep(440,.2);
+}
+function beep(f=880,dur=.12){const c=ac(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+  o.frequency.value=f;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,t);
+  g.gain.linearRampToValueAtTime(.2,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.start(t);o.stop(t+dur);}
+function stopAudio(){ try{ if(S.audio){ S.audio.pause(); S.audio.currentTime=0; S.audio=null; } }catch(e){} }
+function playSignal(item){
+  stopAudio();
+  if(item.audioUrl){                                   // real generated library clip
+    S.audio = new Audio(item.audioUrl);
+    S.audio.play().catch(()=>playSpeech(item));         // fallback to browser speech if file blocked
+  } else if(item.tone){ playTone(item.tone.type); }
+  else { playSpeech(item); }
+}
+
+/* ---------- mic (best-effort) ---------- */
+async function ensureMic(){
+  if(S.stream) return true;
+  try{ S.stream = await navigator.mediaDevices.getUserMedia({audio:true}); return true; }
+  catch(e){ $("copyback").textContent="(mic unavailable — visual loop only)"; return false; }
+}
+function startRec(){
+  if(!S.stream) return;
+  try{
+    S.chunks=[]; S.recorder=new MediaRecorder(S.stream);
+    S.recorder.ondataavailable=e=>e.data.size&&S.chunks.push(e.data);
+    S.recorder.onstop=()=>{ if(S.lastCopyUrl)URL.revokeObjectURL(S.lastCopyUrl);
+      const blob=new Blob(S.chunks,{type:"audio/webm"}); S.lastCopyUrl=URL.createObjectURL(blob);
+      $("copyback").innerHTML=`copy captured · <a href="#" id="playcopy" style="color:var(--accent)">play ▸</a>`;
+      $("playcopy").onclick=ev=>{ev.preventDefault();new Audio(S.lastCopyUrl).play();}; };
+    S.recorder.start();
+  }catch(e){}
+}
+function stopRec(){ try{ S.recorder && S.recorder.state!=="inactive" && S.recorder.stop(); }catch(e){} }
+
+/* ---------- the loop engine ---------- */
+function setRing(p){ $("ring").setAttribute("stroke-dashoffset", String(RING_LEN*(1-p))); }
+function countdown(seconds, onTick, onDone, invert=false){
+  const start=performance.now(), ms=seconds*1000;
+  cancelAnimationFrame(S.raf);
+  (function frame(now){
+    const el=Math.min(1,(now-start)/ms), remain=Math.ceil(seconds-(el*seconds));
+    setRing(invert?1-el:el); onTick(remain);
+    if(el<1){ S.raf=requestAnimationFrame(frame); } else onDone();
+  })(start);
+}
+function setPhase(ph){
+  S.phase=ph; const b=$("btn");
+  b.className="btn "+(ph==="O"?"O":ph==="C"?"C":"idle");
+  if(ph==="O"){ $("b-phase").textContent="O · Original"; $("b-hint").textContent="listen"; }
+  else if(ph==="C"){ $("b-phase").innerHTML='C · Copy'; $("b-hint").innerHTML='<span class="recdot on"></span> mirror it'; }
+  else if(ph==="G"){ $("b-phase").textContent="G"; $("b-hint").textContent="prepare"; b.classList.add("O"); }
+}
+function showItem(it){
+  $("i-lang").textContent = it.lang==="—" ? it.cat.replace("_"," ") : it.lang.toUpperCase();
+  $("i-txt").textContent = it.text;
+  $("i-cat").textContent = `${it.cat} · level ${it.level}`;
+}
+function runOne(){
+  if(S.i>=S.queue.length){ S.i=0; if($("mix").checked) buildQueue(); }
+  const it=S.queue[S.i]; S.current=it; showItem(it); $("copyback").textContent="";
+  // G
+  setPhase("G"); $("b-count").textContent="";
+  S.timer=setTimeout(()=>{
+    // O
+    setPhase("O"); playSignal(it);
+    countdown(+$("gTime").value, r=>$("b-count").textContent=r,
+      ()=>{ // C
+        stopAudio(); setPhase("C"); startRec();
+        countdown(+$("cTime").value, r=>$("b-count").textContent=r,
+          ()=>{ stopRec(); betweenItems(); }, true);
+      });
+  }, 450);
+}
+function betweenItems(){
+  $("b-count").textContent="";
+  if($("cue").checked) beep(1040,.12);
+  S.i++;
+  if(S.mode==="auto" && S.running){
+    setPhase("idle"); $("b-phase").textContent="…"; $("b-hint").textContent="next";
+    S.timer=setTimeout(()=>{ if(S.running) runOne(); }, 700);
+  }else{ // manual
+    setPhase("idle"); $("b-phase").textContent="Next"; $("b-hint").textContent="tap ▸ to advance";
+    $("next").disabled=false;
+  }
+}
+
+/* ---------- controls ---------- */
+async function start(){
+  if(S.running) return;
+  buildQueue(); await ensureMic(); ac().resume&&ac().resume();
+  S.running=true; $("stop").disabled=false; reflectStatus(); runOne();
+}
+function stopAll(){
+  S.running=false; clearTimeout(S.timer); cancelAnimationFrame(S.raf);
+  stopRec(); stopAudio(); speechSynthesis.cancel(); setRing(0);
+  setPhase("idle"); $("b-phase").textContent="Start"; $("b-count").textContent=""; $("b-hint").textContent="one button";
+  $("i-txt").textContent="Tap to start the loop"; $("i-lang").textContent="—"; $("i-cat").textContent="";
+  $("next").disabled=true; $("stop").disabled=true; reflectStatus();
+}
+$("btn").addEventListener("click",()=>{ if(!S.running) start(); else if(S.mode==="manual"&&!$("next").disabled){ $("next").disabled=true; runOne(); } });
+$("next").addEventListener("click",()=>{ if(S.running){ $("next").disabled=true; runOne(); } });
+$("stop").addEventListener("click",stopAll);
+if("speechSynthesis" in window){ speechSynthesis.onvoiceschanged=()=>{}; speechSynthesis.getVoices(); }
+$("srcnote").textContent = USING_LIBRARY
+  ? `library · ${SPEECH.length} clips · ${LANGS.length} languages (9router edge-tts)`
+  : `no library — browser speech (run scripts/generate_library.py)`;
+reflectStatus();
+</script>
+</body>
+</html>

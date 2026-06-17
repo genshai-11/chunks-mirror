@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chunks Mirror (Sound) — Project OS Board</title>
+<style>
+  :root{
+    --paper:#FAFAF9; --ink:#0A0A0B; --muted:#6B6B70; --line:#E4E4E7;
+    --accent:#E10600; --ok:#0A0A0B; --chipbg:#F4F4F5;
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Geist","Satoshi",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto;padding:48px 28px 96px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:8px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:38px;letter-spacing:-.03em;margin:8px 0 4px;font-weight:700}
+  .sub{color:var(--muted);font-size:14px}
+  .meta{display:flex;gap:28px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:18px}
+  .meta b{color:var(--ink);font-weight:600}
+  .bar{height:6px;background:var(--line);border-radius:999px;margin:28px 0 6px;overflow:hidden}
+  .bar>span{display:block;height:100%;background:var(--accent);width:0}
+  .tabs{display:flex;gap:2px;margin:36px 0 0;border-bottom:1px solid var(--line)}
+  .tab{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:10px 16px;border:none;background:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+  section{display:none;padding-top:28px}
+  section.on{display:block}
+  .phase{border-top:1px solid var(--line);padding:18px 0}
+  .phase:first-child{border-top:none}
+  .phrow{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+  .pname{font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .pnote{color:var(--muted);font-size:13px;margin-top:2px}
+  .status{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .s-done{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .s-active{color:var(--accent);border-color:var(--accent)}
+  .s-pending{color:var(--muted)}
+  ul.checks{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+  ul.checks li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink)}
+  ul.checks li .bx{font-family:var(--mono);color:var(--muted)}
+  ul.checks li.done{color:var(--muted);text-decoration:line-through}
+  ul.checks li.done .bx{color:var(--accent);text-decoration:none}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .cell{background:var(--paper);padding:16px}
+  .cell .k{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+  .cell .v{font-size:15px;margin-top:6px}
+  .decision{border-left:2px solid var(--accent);padding:6px 0 6px 16px;margin:16px 0}
+  .decision .id{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .decision .d{font-size:14px;margin-top:3px}
+  footer{margin-top:64px;border-top:1px solid var(--line);padding-top:16px;
+    font-family:var(--mono);font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker" id="k-kicker"></div>
+    <h1 id="k-title"></h1>
+    <div class="sub" id="k-sub"></div>
+    <div class="meta" id="k-meta"></div>
+    <div class="bar"><span id="k-bar"></span></div>
+    <div class="meta"><span id="k-prog"></span></div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+  <section id="sec-phases" class="on"></section>
+  <section id="sec-stack"></section>
+  <section id="sec-decisions"></section>
+</div>
+
+<script>
+const BOARD = {
+  kicker: "Chunks · Project OS",
+  title: "Chunks Mirror (Sound)",
+  sub: "Sound-first MSE attention trainer — hear a signal, mirror it back. One button: G → O → C.",
+  meta: [
+    ["Mode", "adopt + refresh"],
+    ["Stack", "Candidate"],
+    ["Score", "OFF (v1)"],
+    ["Theme", "B/W/Red Swiss"],
+    ["Updated", "2026-06-16 (real 9router lucy text gen + prepared prune + TTS batch, 0 mock)"],
+  ],
+  // progress is DERIVED: checked acceptance items / total. Update only with evidence.
+  // Now reflects completed Phase 0 (full), Phase 1 (full), partial P3/P4 (Settings + Sentence Form + proxy + bank surface + expanded library) after scaffold + library expansion.
+  progressChecked: 9,
+  progressTotal: 13,
+  phases: [
+    { name: "Project OS docs", status: "done", note: "CONTEXT, AGENTS, context/01-08, board",
+      checks: [["x","CONTEXT domain language"],["x","PRD + acceptance"],["x","Architecture (Candidate)"],["x","Build plan + gates"],["x","UI system (B/W/Red)"],["x","Decisions ADR-0005..0011 (incl. Sentence Form + multi-model)"]] },
+    { name: "P0 · Scaffold", status: "done", note: "Vite + React + TS + Tailwind + Firebase preview (build passes)",
+      checks: [["x","Vite/React/TS app + Tailwind + tokens"],["x","Firebase preview config (firebase.json, .firebaserc)"],["x",".env.local.example (9router)"],["x","Folder skeleton per AGENTS (api/, domain/, adapters/, features/, ui/)"],["x","/api/tts proxy + on-demand generation + Resource Bank UI demo + Sentence Form setting"]] },
+    { name: "P1 · Domain + data", status: "done", note: "types (incl. form/sentenceForm), sample bank, storage adapter",
+      checks: [["x","Domain types (ChunksAwareResource + form, RoomSettings + sentenceForm, etc.)"],["x","resources.json sample bank (now with form + multi-model)"],["x","approval.ts + selection.ts (form-aware filter + random mix)"],["x","StorageAdapter + LocalJsonStorageAdapter"]] },
+    { name: "P2 · Mirror Loop engine", status: "pending", note: "controller + audio adapters",
+      checks: [[" ","Playback + mic adapters"],[" ","MirrorLoopController"],[" ","timing 3s/3s configurable"],[" ","auto/manual + ending cue"]] },
+    { name: "P3 · Mirror Room UI", status: "in-progress", note: "prototype first — one button + settings (SettingsBar complete with new form control)",
+      checks: [["x","Dynamic Settings bar (SettingsBar.tsx with Mode, timing, cat/lang/level, mix, cue + **Sentence Form All/Short/Long** seg)"],[" ","One primary button + full countdown ring + recording (demo rhythm + real bank playback present; full controller next)"],["x","B/W/Red Swiss (tokens + prototype parity)"]] },
+    { name: "P4 · Sound Engine", status: "active", note: "9router 20+ languages + forms + multi-model + import + bank UI",
+      checks: [["x","/api/tts proxy → 9router + TTSAdapter"],["x","≥20 (target 24) languages + Sentence Forms (short/long) + multi-model (edge-tts, el/eleven_multilingual_v2, google-tts, deepgram, ...) via re-runnable generator"],[" ","text-to-sound / SFX (import-first; on-demand path demoed)"],["x","user/curated import + provenance + form metadata (demo flow)"],["x","Resource Bank surface: list (with form column), filter (incl. new sentence form), preview, on-demand generate (proxy + model picker), import, approve notes"],["x","Two-phase: real 9router 'lucy' generate texts (phase 1) → 'Prepared texts (N) — xóa cái không cần' (delete x, tempId) → TTS hàng loạt (phase 2); 0 mock data anywhere (App + proxies)"]] },
+    { name: "P5 · Firebase preview", status: "pending", note: "gated; no prod deploy",
+      checks: [[" ","local build passes"],[" ","Functions proxy for prod"],[" ","rollback/restore documented"]] },
+  ],
+  stack: [
+    ["UI","React + Vite + TypeScript"],
+    ["Styling","Tailwind CSS"],
+    ["Audio out","Web Audio / <audio>"],
+    ["Audio in","MediaRecorder"],
+    ["Data","local JSON behind StorageAdapter"],
+    ["TTS","9router via /api/* proxy"],
+    ["Languages","24 target (≥20 required)"],
+    ["Hosting","Firebase (preview-first)"],
+  ],
+  decisions: [
+    ["ADR-0011","Sentence Form (short/long) + multi-model library generation (edge / eleven_multilingual_v2 / google-tts / deepgram) + Dynamic Settings filter"],
+    ["ADR-0010","Canonical build home = CHUNKS-MIRROR-SOUND (A, go)"],
+    ["ADR-0009","20+ language speech via 9router (edge-tts + eleven_multilingual_v2)"],
+    ["ADR-0008","9router TTS backbone, called server-side via /api/tts"],
+    ["ADR-0007","Theme: black / white / single red accent, Swiss minimal"],
+    ["ADR-0006","Mirror Score OFF in v1; loop still emits MirrorAttempt"],
+    ["ADR-0005","Interaction Mode auto + manual; G/C timing configurable"],
+  ],
+};
+
+const $ = (id)=>document.getElementById(id);
+$("k-kicker").textContent = BOARD.kicker;
+$("k-title").textContent = BOARD.title;
+$("k-sub").textContent = BOARD.sub;
+$("k-meta").innerHTML = BOARD.meta.map(([k,v])=>`${k} <b>${v}</b>`).join("");
+const pct = BOARD.progressTotal ? Math.round(100*BOARD.progressChecked/BOARD.progressTotal) : 0;
+$("k-bar").style.width = pct + "%";
+$("k-prog").innerHTML = `Progress <b>${pct}%</b> &nbsp;·&nbsp; ${BOARD.progressChecked}/${BOARD.progressTotal} acceptance items (evidence-based)`;
+
+const sMap = {done:"s-done",active:"s-active",pending:"s-pending"};
+$("sec-phases").innerHTML = BOARD.phases.map(p=>`
+  <div class="phase">
+    <div class="phrow">
+      <div><div class="pname">${p.name}</div><div class="pnote">${p.note}</div></div>
+      <span class="status ${sMap[p.status]}">${p.status}</span>
+    </div>
+    <ul class="checks">${p.checks.map(([c,t])=>`<li class="${c==='x'?'done':''}"><span class="bx">[${c==='x'?'x':' '}]</span><span>${t}</span></li>`).join("")}</ul>
+  </div>`).join("");
+
+$("sec-stack").innerHTML = `<div class="grid">${BOARD.stack.map(([k,v])=>`<div class="cell"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>`;
+$("sec-decisions").innerHTML = BOARD.decisions.map(([id,d])=>`<div class="decision"><div class="id">${id}</div><div class="d">${d}</div></div>`).join("");
+
+const TABS = [["sec-phases","Phases"],["sec-stack","Stack"],["sec-decisions","Decisions"]];
+$("tabs").innerHTML = TABS.map(([id,label],i)=>`<button class="tab" role="tab" data-sec="${id}" aria-selected="${i===0}">${label}</button>`).join("");
+$("tabs").addEventListener("click",e=>{
+  const b=e.target.closest(".tab"); if(!b) return;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected", t===b));
+  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on", s.id===b.dataset.sec));
+});
+document.body.insertAdjacentHTML("beforeend",`<footer>Project OS dashboard · derived view, not canonical state · canonical = context/*.md + Hermes</footer>`);
+</script>
+</body>
+</html>

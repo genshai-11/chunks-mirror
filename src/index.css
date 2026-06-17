@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Swiss black / white / single red tokens (from context/07-ui-system.md) */
+:root {
+  --bg: #070709;
+  --bg-elev: #0C0C0E;
+  --bg-panel: #121217;
+  --fg: #FFFFFF;
+  --fg-muted: #8E8E93;
+  --line: #1A1A1E;
+  --line-strong: #23232C;
+  --accent: #FF453A;
+  --accent-press: #D9352D;
+  --success: #10B981;
+  --on-accent: #FFFFFF;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-pill: 999px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Geist", "Satoshi", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #070709;
+  --bg-elev: #0C0C0E;
+  --bg-panel: #121217;
+  --fg: #FFFFFF;
+  --fg-muted: #A1A1AA;
+  --line: #1A1A1E;
+  --line-strong: #23232C;
+  --accent: #FF453A;
+  --accent-press: #D9352D;
+  --success: #10B981;
+  --on-accent: #FFFFFF;
+  color-scheme: dark;
+}
+
+html {
+  background: var(--bg);
+  font-size: 18px;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 1rem;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(255, 69, 58, 0.24);
+  color: var(--fg);
+}
+
+@keyframes ring-pulse-fade {
+  0% {
+    opacity: 0.72;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+@keyframes wave-jump {
+  0%, 100% {
+    transform: scaleY(0.28);
+    opacity: 0.42;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-ring-pulse-fade {
+  animation: ring-pulse-fade 1.1s var(--ease) infinite;
+}
+
+.wave-bar {
+  display: block;
+  width: 6px;
+  height: 56px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+  animation: wave-jump 760ms var(--ease) infinite;
+}
+
+.wave-bar-1 { animation-delay: 0ms; }
+.wave-bar-2 { animation-delay: 110ms; }
+.wave-bar-3 { animation-delay: 220ms; }
+.wave-bar-4 { animation-delay: 330ms; }
+.wave-bar-5 { animation-delay: 440ms; }
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}

@@ -1,0 +1,15 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+dist/
+.DS_Store
+*.log
+.firebase/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+.pi/
+mcps/
+__pycache__/
+*.pyc
