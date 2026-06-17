@@ -409,8 +409,57 @@ export default function App() {
       await new Promise((resolve) => setTimeout(resolve, 40))
     }
 
-    setBatchProgress({ current: preparedTexts.length, total: preparedTexts.length, message: `Done - ${ok}/${preparedTexts.length} generated` })
-    setLog(`Batch TTS done. ${ok} new clips in staged (play ▶ in Library tab).`)
+    setBatchProgress({ current: preparedTexts.length, total: preparedTexts.length, message: `Done — ${ok}/${preparedTexts.length} generated` })
+    setLog(`Batch TTS done. ${ok} clips ready — importing to library…`)
+
+    // Auto-import all newly generated staged items directly to library
+    if (ok > 0) {
+      setStaged((latestStaged) => {
+        const toImport = latestStaged.map((item) => ({ ...item, _staged: true as const }))
+        void (async () => {
+          try {
+            const now = Date.now()
+            const promoted = await Promise.all(toImport.map(async (item, i) => {
+              const audioUrl = item.audioUrl ? await audioUrlToPersistableUrl(item.audioUrl) : ''
+              return {
+                id: item.id?.startsWith('lib-') ? item.id : `lib-${item.id || now + i}`,
+                category: (item.category || 'speech') as ChunksAwareResource['category'],
+                sourceKind: (item.sourceKind || 'tts') as ChunksAwareResource['sourceKind'],
+                audioUrl,
+                textPrompt: item.textPrompt,
+                soundPrompt: item.soundPrompt,
+                label: Array.isArray((item as ChunksAwareResource).label) ? (item as ChunksAwareResource).label : ['batch'],
+                language: item.language,
+                level: item.level || 1,
+                form: item.form as ChunksAwareResource['form'],
+                durationMs: null,
+                approvalStatus: 'approved_resource' as const,
+                license: 'local tts batch',
+                provenanceUrl: '',
+                attribution: '',
+                provider: item.provider || 'tts',
+                voiceId: (item as ChunksAwareResource).voiceId || item.provider || '',
+                createdAt: new Date().toISOString().slice(0, 10),
+                mseFocus: 'sound' as const,
+                resistanceTag: 'batch',
+                lessonId: 'batch-library',
+                mirrorGoal: 'prosody' as const,
+              } satisfies ChunksAwareResource
+            }))
+            setPromotedResources((current) => {
+              const merged = [...current, ...promoted]
+              return merged.filter((item, idx, arr) => idx === arr.findIndex((e) => e.id === item.id))
+            })
+            setStaged([])
+            setBatchProgress(null)
+            setLog(`✓ ${promoted.length} clips imported to library.`)
+          } catch (err) {
+            setLog(`Auto-import failed: ${errorMessage(err)}`)
+          }
+        })()
+        return latestStaged
+      })
+    }
   }
 
   const importAllStaged = () => promoteStagedItems(staged.map((item) => ({ ...item, _staged: true })))
@@ -525,11 +574,11 @@ export default function App() {
 
               <div className="mt-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">{batchSelectedLangs.length} languages selected</span>
-                  <div className="flex gap-3 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">
-                    <button onClick={() => setBatchSelectedLangs(['vi', 'en', 'fr', 'zh', 'ja', 'ko'])} className="hover:text-white">Top 6</button>
-                    <button onClick={() => setBatchSelectedLangs(ALL_LANGS)} className="hover:text-white">All</button>
-                    <button onClick={() => setBatchSelectedLangs([])} className="hover:text-white">Clear</button>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">{batchSelectedLangs.length} / {ALL_LANGS.length} languages</span>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setBatchSelectedLangs(['vi', 'en', 'fr', 'zh', 'ja', 'ko'])} className="rounded-[999px] border border-[--line] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] transition-all hover:border-white hover:text-white active:scale-[0.98]">Top 6</button>
+                    <button onClick={() => setBatchSelectedLangs(ALL_LANGS)} className="rounded-[999px] border border-[--accent] bg-[--accent] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-white transition-all hover:bg-[--accent-press] active:scale-[0.98]">Select all</button>
+                    <button onClick={() => setBatchSelectedLangs([])} className="rounded-[999px] border border-[--line] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] transition-all hover:border-white hover:text-white active:scale-[0.98]">Clear</button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
