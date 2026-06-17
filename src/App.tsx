@@ -413,24 +413,37 @@ export default function App() {
     setLog(`Batch TTS done. ${ok} new clips in staged (play ▶ in Library tab).`)
   }
 
+  const importAllStaged = () => promoteStagedItems(staged.map((item) => ({ ...item, _staged: true })))
+
   return (
     <div className="min-h-[100dvh] bg-[--bg] text-[--fg]">
-      <nav className="fixed right-4 top-4 z-30 flex items-center gap-1 rounded-[999px] border border-[--line-strong] bg-[#0C0C0E]/90 p-1 backdrop-blur">
+      <nav className="fixed left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[999px] border border-[--line-strong] bg-[#0C0C0E]/90 p-1 backdrop-blur">
         {(['mirror', 'resources'] as const).map((item) => (
           <button
             key={item}
             onClick={() => setTab(item)}
-            className={`rounded-[999px] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-all active:scale-[0.98] ${
+            className={`rounded-[999px] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-all active:scale-[0.98] ${
               tab === item ? 'bg-[--accent] text-white' : 'text-[--fg-muted] hover:text-white'
             }`}
           >
-            {item === 'mirror' ? 'Training Arena' : 'Library Setup'}
+            {item === 'mirror' ? 'Mirror Room' : 'Library'}
           </button>
         ))}
+        {staged.length > 0 && tab !== 'mirror' && (
+          <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[--accent] px-1.5 font-mono text-[9px] text-white">
+            {staged.length}
+          </span>
+        )}
       </nav>
 
       {tab === 'mirror' && (
-        <MirrorPage settings={settings} pool={pool} onLog={setLog} />
+        <MirrorPage
+          settings={settings}
+          pool={pool}
+          onLog={setLog}
+          onSettingsChange={setSettings}
+          availableLangs={availableLangs}
+        />
       )}
 
       {tab === 'resources' && (
@@ -438,11 +451,29 @@ export default function App() {
           <div className="mx-auto max-w-[1200px] space-y-6">
             <header className="border-b border-[--line] pb-6">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--accent]">Library Setup</div>
-              <h1 className="mt-2 max-w-[12ch] text-4xl tracking-[-0.06em] text-white md:text-5xl md:leading-none">Prepare sounds before the loop.</h1>
+              <h1 className="mt-2 max-w-[14ch] text-4xl tracking-[-0.06em] text-white md:text-5xl md:leading-none">Prepare sounds before the loop.</h1>
               <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-[--fg-muted]">
-                Generation and library management stay outside Mirror Room. No synthesis runs inside the live play/copy loop.
+                Generate texts, run TTS, then import to library. Mirror Room only plays from the approved library.
               </p>
             </header>
+
+            {/* Staged items import banner */}
+            {staged.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-[--success]/30 bg-[--success]/[0.06] px-5 py-4">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[--success]">Staged audio ready</div>
+                  <div className="mt-1 text-sm text-white">
+                    {staged.length} clip{staged.length !== 1 ? 's' : ''} waiting — import to library to use in Mirror Room.
+                  </div>
+                </div>
+                <button
+                  onClick={importAllStaged}
+                  className="rounded-[999px] bg-[--success] px-5 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-black transition-all hover:brightness-110 active:scale-[0.98]"
+                >
+                  Import all ({staged.length})
+                </button>
+              </div>
+            )}
 
             <SettingsBar settings={settings} onChange={setSettings} availableLangs={availableLangs} />
 
@@ -510,8 +541,8 @@ export default function App() {
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[--line] pt-5">
-                <button onClick={generateTextsReal} disabled={genBusy || batchSelectedLangs.length === 0} className="rounded-[999px] bg-[--accent] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-white transition-all hover:bg-[--accent-press] active:scale-[0.98] disabled:opacity-40">{genBusy ? 'Generating' : 'Generate texts'}</button>
-                {preparedTexts.length > 0 && <button onClick={() => deletePreparedTexts(preparedTexts.map((item) => item.tempId))} className="rounded-[999px] border border-[--line] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[--fg-muted] transition-all hover:border-[--accent] hover:text-[--accent] active:scale-[0.98]">Clear prepared</button>}
+                <button onClick={generateTextsReal} disabled={genBusy || batchSelectedLangs.length === 0} className="rounded-[999px] bg-[--accent] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-white transition-all hover:bg-[--accent-press] active:scale-[0.98] disabled:opacity-40">{genBusy ? 'Generating…' : 'Generate texts'}</button>
+                {preparedTexts.length > 0 && <button onClick={() => deletePreparedTexts(preparedTexts.map((item) => item.tempId))} className="rounded-[999px] border border-[--line] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[--fg-muted] transition-all hover:border-[--accent] hover:text-[--accent] active:scale-[0.98]">Clear</button>}
               </div>
             </section>
 
@@ -544,7 +575,16 @@ export default function App() {
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <button onClick={runBatchTTS} className="rounded-[999px] bg-white px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-black transition-all hover:bg-[--accent] hover:text-white active:scale-[0.98]">Run TTS ({preparedTexts.length})</button>
-                  {batchProgress && <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">{batchProgress.message}</span>}
+                  {batchProgress && (
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">
+                      {batchProgress.message}
+                    </span>
+                  )}
+                  {batchProgress?.message.startsWith('Done') && staged.length > 0 && (
+                    <button onClick={importAllStaged} className="rounded-[999px] bg-[--success] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-black transition-all hover:brightness-110 active:scale-[0.98]">
+                      Import all to library ({staged.length})
+                    </button>
+                  )}
                 </div>
               </section>
             )}

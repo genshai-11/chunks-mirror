@@ -19,7 +19,9 @@ export interface MirrorLoopControllerOptions {
   onCurrentItemChange: (item: ChunksAwareResource | null) => void
   onLog: (message: string) => void
   onAttempt?: (attempt: MirrorAttempt) => void
+  onCountdown?: (remaining: number, phase: 'O' | 'C') => void
   playEndingCue?: () => void | Promise<void>
+  playAfterCopyCue?: () => void | Promise<void>
 }
 
 export class MirrorLoopController {
@@ -130,8 +132,8 @@ export class MirrorLoopController {
       this.opts.onLog(`Playback error: ${e?.message || e}`)
     })
 
-    this.startCountdown(oSeconds, () => {
-      // visual countdown is handled by UI (it can subscribe to phase + a remaining value)
+    this.startCountdown(oSeconds, (remain) => {
+      this.opts.onCountdown?.(remain, 'O')
     }, () => {
       void this.playCueThenCopy(settings)
     })
@@ -169,11 +171,10 @@ export class MirrorLoopController {
 
     this.startCountdown(
       cSeconds,
-      () => {
-        // UI can show recording indicator based on phase
+      (remain) => {
+        this.opts.onCountdown?.(remain, 'C')
       },
       async () => {
-        // Stop recording
         let copyBlob: Blob | undefined
         try {
           if (this.opts.mic.isRecording()) {
@@ -182,6 +183,10 @@ export class MirrorLoopController {
           }
         } catch (error) {
           void error
+        }
+
+        if (this.opts.playAfterCopyCue) {
+          try { await this.opts.playAfterCopyCue() } catch { /* cue failure never blocks loop */ }
         }
 
         this.betweenItems(settings, copyBlob)
