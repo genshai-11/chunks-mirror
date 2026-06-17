@@ -1,50 +1,46 @@
-/**
- * Same-origin /api/generate-text proxy handler (for 9router "lucy" or other text/LLM models).
- * Used by Vite dev middleware and (later) Firebase Functions.
- * Never expose NINEROUTER_KEY to the browser.
- * Mirrors the text generation used for "Prepared texts" phase-1 before TTS batch.
- */
-export interface GenerateTextRequest {
-  model: string // e.g. "lucy"
-  prompt: string
-}
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-export async function handleGenerateTextProxy(
-  reqBody: unknown,
-  env: { NINEROUTER_URL?: string; NINEROUTER_KEY?: string }
-): Promise<{ ok: boolean; status: number; contentType?: string; body: string | ArrayBuffer }> {
-  const body = (reqBody || {}) as GenerateTextRequest
-  if (!body.model || !body.prompt) {
-    return { ok: false, status: 400, body: JSON.stringify({ error: 'model and prompt required' }) }
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' })
+    return
   }
 
-  const upstreamBase = (env.NINEROUTER_URL || '').replace(/\/$/, '')
-  // NINEROUTER_URL already includes /v1, so just append /chat/completions
-  const upstream = `${upstreamBase}/chat/completions`
+  const body = req.body || {}
+  if (!body.model || !body.prompt) {
+    res.status(400).json({ error: 'model and prompt required' })
+    return
+  }
 
+  const upstreamBase = (process.env.NINEROUTER_URL || '').replace(/\/$/, '')
+  const upstream = `${upstreamBase}/chat/completions`
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'User-Agent': 'chunks-mirror/1.0',
   }
-  if (env.NINEROUTER_KEY) headers['Authorization'] = `Bearer ${env.NINEROUTER_KEY}`
+  if (process.env.NINEROUTER_KEY) headers['Authorization'] = `Bearer ${process.env.NINEROUTER_KEY}`
 
-  const upstreamBody = {
-    model: body.model,
-    messages: [{ role: 'user', content: body.prompt }],
+  try {
+    const upstreamRes = await fetch(upstream, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: body.model,
+        messages: [{ role: 'user', content: body.prompt }],
+      }),
+    })
+
+    if (!upstreamRes.ok) {
+      const text = await upstreamRes.text().catch(() => '')
+      res.status(upstreamRes.status).json({ error: 'upstream', status: upstreamRes.status, body: text.slice(0, 500) })
+      return
+    }
+
+    const ct = upstreamRes.headers.get('content-type') || 'application/json'
+    const buf = Buffer.from(await upstreamRes.arrayBuffer())
+    res.setHeader('Content-Type', ct)
+    res.send(buf)
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'proxy failure', message: String((e as Error)?.message || e) })
   }
-
-  const res = await fetch(upstream, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(upstreamBody),
-  })
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    return { ok: false, status: res.status, body: JSON.stringify({ error: 'upstream', status: res.status, body: text.slice(0, 500) }) }
-  }
-
-  const ct = res.headers.get('content-type') || 'application/json'
-  const buf = await res.arrayBuffer()
-  return { ok: true, status: 200, contentType: ct, body: buf }
 }

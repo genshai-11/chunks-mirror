@@ -1,38 +1,42 @@
-/**
- * Same-origin /api/tts proxy handler.
- * Used by Vite dev middleware and (later) Firebase Functions.
- * Never expose NINEROUTER_KEY to the browser.
- */
-export interface TtsRequest {
-  model: string
-  input: string
-}
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-export async function handleTtsProxy(reqBody: unknown, env: { NINEROUTER_URL?: string; NINEROUTER_KEY?: string }): Promise<{ ok: boolean; status: number; contentType?: string; body: ArrayBuffer | string }> {
-  const body = (reqBody || {}) as TtsRequest
-  if (!body.model || !body.input) {
-    return { ok: false, status: 400, body: JSON.stringify({ error: 'model and input required' }) }
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' })
+    return
   }
 
-  const upstream = `${(env.NINEROUTER_URL || '').replace(/\/$/, '')}/audio/speech`
+  const body = req.body || {}
+  if (!body.model || !body.input) {
+    res.status(400).json({ error: 'model and input required' })
+    return
+  }
+
+  const upstream = `${(process.env.NINEROUTER_URL || '').replace(/\/$/, '')}/audio/speech`
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'User-Agent': 'chunks-mirror/1.0',
   }
-  if (env.NINEROUTER_KEY) headers['Authorization'] = `Bearer ${env.NINEROUTER_KEY}`
+  if (process.env.NINEROUTER_KEY) headers['Authorization'] = `Bearer ${process.env.NINEROUTER_KEY}`
 
-  const res = await fetch(upstream, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ model: body.model, input: body.input }),
-  })
+  try {
+    const upstreamRes = await fetch(upstream, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: body.model, input: body.input }),
+    })
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    return { ok: false, status: res.status, body: JSON.stringify({ error: 'upstream', status: res.status, body: text.slice(0, 500) }) }
+    if (!upstreamRes.ok) {
+      const text = await upstreamRes.text().catch(() => '')
+      res.status(upstreamRes.status).json({ error: 'upstream', status: upstreamRes.status, body: text.slice(0, 500) })
+      return
+    }
+
+    const ct = upstreamRes.headers.get('content-type') || 'audio/mpeg'
+    const buf = Buffer.from(await upstreamRes.arrayBuffer())
+    res.setHeader('Content-Type', ct)
+    res.send(buf)
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'proxy failure', message: String((e as Error)?.message || e) })
   }
-
-  const ct = res.headers.get('content-type') || 'audio/mpeg'
-  const buf = await res.arrayBuffer()
-  return { ok: true, status: 200, contentType: ct, body: buf }
 }
