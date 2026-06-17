@@ -6,7 +6,7 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/tts.ts": { "maxDuration": 30 },
-    "api/generate-text.ts": { "maxDuration": 30 }
+    "api/tts.ts": { "maxDuration": 60 },
+    "api/generate-text.ts": { "maxDuration": 300 }
   }
 }
