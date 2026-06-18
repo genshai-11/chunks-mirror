@@ -62,8 +62,8 @@ function estimateSyllables(text?: string): number {
 function resolveForm(item: Pick<LibraryItem, 'form' | 'textPrompt' | 'soundPrompt'>): Exclude<LibraryForm, 'all'> {
   if (item.form === 'short' || item.form === 'medium' || item.form === 'long') return item.form
   const sc = estimateSyllables(item.textPrompt || item.soundPrompt)
-  if (sc <= 4) return 'short'
-  if (sc <= 10) return 'medium'
+  if (sc <= 3) return 'short'
+  if (sc <= 6) return 'medium'
   return 'long'
 }
 
