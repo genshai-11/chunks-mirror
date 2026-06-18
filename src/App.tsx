@@ -3,7 +3,8 @@ import SettingsBar from './features/settings/SettingsBar'
 import MirrorPage from './features/mirror/MirrorPage'
 import LibraryPanel from './features/resources/LibraryPanel'
 import type { RoomSettings, ChunksAwareResource } from './domain/types'
-import { LocalJsonStorageAdapter } from './adapters/localJsonStorage'
+
+import { langName } from './domain/languages'
 import { buildPool } from './domain/selection'
 import { voiceForLang, generateSpeech, listModels, type TtsModel } from './adapters/tts'
 
@@ -118,14 +119,7 @@ export default function App() {
   })
 
   useEffect(() => {
-    const adapter = new LocalJsonStorageAdapter()
-    adapter.loadResources()
-      .then((items) => {
-        const merged = [...items, ...promotedResources]
-        const deduped = merged.filter((item, index, arr) => index === arr.findIndex((entry) => entry.id === item.id))
-        setResources(deduped.filter((item) => !item.id || !deletedResourceIds.includes(item.id)))
-      })
-      .catch(() => setResources(promotedResources.filter((item) => !item.id || !deletedResourceIds.includes(item.id))))
+    setResources(promotedResources.filter((item) => !item.id || !deletedResourceIds.includes(item.id)))
   }, [deletedResourceIds, promotedResources])
 
   useEffect(() => {
@@ -482,7 +476,7 @@ export default function App() {
     for (let index = 0; index < preparedTexts.length; index += 1) {
       const prepared = preparedTexts[index]
       const model = voiceMode === 'auto'
-        ? voiceForLang(prepared.language)
+        ? voiceForLang(prepared.language, index)
         : voiceMode === 'multi' && selectedModels.length > 0
           ? selectedModels[index % selectedModels.length]
           : batchModel
@@ -816,7 +810,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-2">
                   {ALL_LANGS.map((lang) => {
                     const active = batchSelectedLangs.includes(lang)
-                    return <button key={lang} onClick={() => setBatchSelectedLangs((current) => active ? current.filter((entry) => entry !== lang) : [...current, lang])} className={`rounded-[999px] border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-all active:scale-[0.98] ${active ? 'border-[--accent] bg-[--accent] text-white' : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'}`}>{lang}</button>
+                    return <button key={lang} onClick={() => setBatchSelectedLangs((current) => active ? current.filter((entry) => entry !== lang) : [...current, lang])} className={`rounded-[999px] border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-all active:scale-[0.98] ${active ? 'border-[--accent] bg-[--accent] text-white' : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'}`}>{langName(lang)}</button>
                   })}
                 </div>
               </div>

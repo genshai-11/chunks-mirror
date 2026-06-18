@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChunksAwareResource, RoomSettings } from '../../domain/types'
 import { MirrorLoopController, type LoopPhase } from '../../domain/mirrorLoop'
+import { langName } from '../../domain/languages'
 import { BrowserAudioPlaybackAdapter } from '../../adapters/audioPlayback'
 import { BrowserMicRecordingAdapter } from '../../adapters/micCapture'
 import { playAudioCue } from '../../adapters/audioCue'
@@ -367,7 +368,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
             >
               <option value="">All languages</option>
               {availableLangs.map((lang) => (
-                <option key={lang} value={lang}>{lang.toUpperCase()}</option>
+                <option key={lang} value={lang}>{langName(lang)}</option>
               ))}
             </select>
           </SideSection>

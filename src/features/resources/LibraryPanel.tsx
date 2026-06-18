@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import type { SoundCategory } from '../../domain/types'
+import { langName } from '../../domain/languages'
 
 type LibraryItem = {
   id?: string
@@ -193,7 +194,7 @@ export default function LibraryPanel({
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <Select label="Source" value={sourceFilter} onChange={(value) => setSourceFilter(value as SourceFilter)} options={SOURCE_ORDER.map((value) => ({ value, label: SOURCE_LABEL[value] }))} />
           <Select label="Category" value={filterCat} onChange={onFilterCat} options={[{ value: '', label: 'All' }, ...cats.map((cat) => ({ value: cat, label: CAT_LABEL[cat] || cat }))]} />
-          <Select label="Language" value={filterLang} onChange={onFilterLang} options={[{ value: '', label: 'All' }, ...langs.map((lang) => ({ value: lang, label: lang }))]} />
+          <Select label="Language" value={filterLang} onChange={onFilterLang} options={[{ value: '', label: 'All' }, ...langs.map((lang) => ({ value: lang, label: langName(lang) }))]} />
           <Select label="Form" value={formFilter} onChange={(value) => setFormFilter(value as LibraryForm)} options={FORM_ORDER.map((value) => ({ value, label: value }))} />
           <label className="block space-y-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Limit</span>
@@ -280,7 +281,7 @@ function ResourceRow({ item, selected, onToggleSelect, onPlay, onDelete, onPromo
       </button>
       <div className="min-w-0">
         <div className="flex flex-wrap gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[--fg-muted]">
-          <span className="text-[--accent]">{item.language || item.category || 'sound'}</span>
+          <span className="text-[--accent]">{item.language ? langName(item.language) : item.category || 'sound'}</span>
           <span>{item._staged ? 'staged' : 'approved'}</span>
           <span>{CAT_LABEL[item.category || ''] || item.category}</span>
           <span>{item._form}</span>
