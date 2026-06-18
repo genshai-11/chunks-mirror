@@ -143,15 +143,24 @@ export default function App() {
   }, [promotedResources])
 
   useEffect(() => {
-    // On mount, fetch remote audio items from Vercel Blob and merge into promotedResources
+    // On mount, fetch remote audio from Vercel Blob.
+    // Blob is the source of truth for https:// items: any local https:// entry
+    // whose URL is no longer in Blob (deleted on another device) gets pruned.
     fetch('/api/list-audio')
       .then((r) => r.ok ? r.json() : Promise.reject(new Error(`list-audio ${r.status}`)))
       .then((data: { items: Array<Record<string, unknown>> }) => {
-        if (!Array.isArray(data.items) || data.items.length === 0) return
+        const blobItems = Array.isArray(data.items) ? data.items : []
+        const blobUrls = new Set(blobItems.map((item) => item.url as string))
+
         setPromotedResources((current) => {
-          const localUrls = new Set(current.map((item) => item.audioUrl))
-          const newItems: ChunksAwareResource[] = data.items
-            .filter((item) => typeof item.url === 'string' && !localUrls.has(item.url as string))
+          // Keep local-only items (blob: URLs or not yet uploaded)
+          const localOnly = current.filter((item) => !item.audioUrl?.startsWith('https://'))
+          // Keep https:// items still present in Blob (prune deleted ones)
+          const stillInBlob = current.filter((item) => item.audioUrl?.startsWith('https://') && blobUrls.has(item.audioUrl))
+          // Add new Blob items not yet in local state
+          const localBlobUrls = new Set(current.map((item) => item.audioUrl).filter(Boolean))
+          const newFromBlob: ChunksAwareResource[] = blobItems
+            .filter((item) => typeof item.url === 'string' && !localBlobUrls.has(item.url as string))
             .map((item, index) => ({
               id: `blob-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
               category: 'speech' as const,
@@ -176,8 +185,8 @@ export default function App() {
               lessonId: 'blob-library',
               mirrorGoal: 'prosody' as const,
             }))
-          if (newItems.length === 0) return current
-          return [...current, ...newItems]
+
+          return [...localOnly, ...stillInBlob, ...newFromBlob]
         })
       })
       .catch(() => { /* remote list unavailable, continue with local */ })
