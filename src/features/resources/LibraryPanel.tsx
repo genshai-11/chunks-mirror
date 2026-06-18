@@ -54,15 +54,16 @@ const FORM_ORDER: LibraryForm[] = ['all', 'short', 'medium', 'long']
 const SOURCE_ORDER: SourceFilter[] = ['all', 'approved', 'staged']
 const SOURCE_LABEL: Record<SourceFilter, string> = { all: 'All', approved: 'Approved', staged: 'Staged' }
 
-function wordCount(text?: string): number {
-  return (text || '').trim().split(/\s+/).filter(Boolean).length
+function estimateSyllables(text?: string): number {
+  // Rough cross-language estimator: count vowel nuclei
+  return ((text || '').toLowerCase().match(/[aáàâãäåæeéèêëiíìîïoóòôõöøuúùûüyýÿаеёиоуыэюяіїєАЕЁИОУЫЭЮЯІЇЄ]/g) || []).length || 1
 }
 
 function resolveForm(item: Pick<LibraryItem, 'form' | 'textPrompt' | 'soundPrompt'>): Exclude<LibraryForm, 'all'> {
   if (item.form === 'short' || item.form === 'medium' || item.form === 'long') return item.form
-  const wc = wordCount(item.textPrompt || item.soundPrompt)
-  if (wc < 5) return 'short'
-  if (wc < 15) return 'medium'
+  const sc = estimateSyllables(item.textPrompt || item.soundPrompt)
+  if (sc <= 4) return 'short'
+  if (sc <= 10) return 'medium'
   return 'long'
 }
 

@@ -364,9 +364,9 @@ export default function App() {
     }, 1000)
     try {
       const FORM_SPEC: Record<string, string> = {
-        short: '1-3 words STRICTLY (single words, short labels, greetings; never exceed 3 words)',
-        medium: '4-8 words STRICTLY (short phrases, natural expressions; never below 4 or above 8 words)',
-        long: '9-15 words STRICTLY (full sentences; never below 9 or above 15 words)',
+        short: '1-4 syllables STRICTLY (single words, interjections, 2-syllable greetings; e.g. "Yes!", "Hello", "Merci", "Cảm ơn")',
+        medium: '5-10 syllables STRICTLY (short natural phrases; e.g. "How are you today?", "Sounds really good!")',
+        long: '11-20 syllables STRICTLY (full expressive sentences; e.g. "I would love to visit Paris someday.")',
       }
       const LEVEL_SPEC: Record<number, string> = {
         1: 'simple daily expressions, familiar vocabulary, one idea per sentence',
@@ -380,7 +380,7 @@ export default function App() {
         + `Form: ${batchForm} - ${FORM_SPEC[batchForm]}\n`
         + `Level: ${batchLevel} - ${LEVEL_SPEC[batchLevel]}\n\n`
         + `Mix these languages with equal random distribution: ${batchSelectedLangs.join(', ')}\n\n`
-        + 'CRITICAL: Count words carefully. Every sentence MUST respect the word-count rule above.\n'
+        + 'CRITICAL: Count SYLLABLES carefully (not words). Every sentence MUST respect the syllable-count rule above.\n'
         + 'Output ONLY a valid JSON array, no markdown, no explanation:\n'
         + '[{"text":"sentence here","lang":"ISO-639-1-code"}, ...]'
 
@@ -723,9 +723,9 @@ export default function App() {
                 <label className="space-y-2">
                   <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Form</span>
                   <select value={batchForm} onChange={(e) => setBatchForm(e.target.value as 'short' | 'medium' | 'long')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]">
-                    <option value="short">Short</option>
-                    <option value="medium">Medium</option>
-                    <option value="long">Long</option>
+                    <option value="short">Short (1–4 âm)</option>
+                    <option value="medium">Medium (5–10 âm)</option>
+                    <option value="long">Long (11–20 âm)</option>
                   </select>
                 </label>
 
