@@ -496,54 +496,30 @@ export default function App() {
     }
 
     setBatchProgress({ current: preparedTexts.length, total: preparedTexts.length, message: `Done — ${ok}/${preparedTexts.length} generated` })
-    setLog(`Batch TTS done. ${ok} clips ready — importing to library…`)
 
-    // Auto-import all newly generated staged items directly to library
     if (ok > 0) {
+      // Drain staged → promoted directly. URLs are already https:// from uploadAudioToBlob in the loop.
+      // No async conversion needed — avoids race conditions and localStorage quota issues.
       setStaged((latestStaged) => {
-        const toImport = latestStaged.map((item) => ({ ...item, _staged: true as const }))
-        void (async () => {
-          try {
-            const now = Date.now()
-            const promoted = await Promise.all(toImport.map(async (item, i) => {
-              const audioUrl = item.audioUrl ? await audioUrlToPersistableUrl(item.audioUrl) : ''
-              return {
-                id: item.id?.startsWith('lib-') ? item.id : `lib-${item.id || now + i}`,
-                category: (item.category || 'speech') as ChunksAwareResource['category'],
-                sourceKind: (item.sourceKind || 'tts') as ChunksAwareResource['sourceKind'],
-                audioUrl,
-                textPrompt: item.textPrompt,
-                soundPrompt: item.soundPrompt,
-                label: Array.isArray((item as ChunksAwareResource).label) ? (item as ChunksAwareResource).label : ['batch'],
-                language: item.language,
-                level: item.level || 1,
-                form: item.form as ChunksAwareResource['form'],
-                durationMs: null,
-                approvalStatus: 'approved_resource' as const,
-                license: 'local tts batch',
-                provenanceUrl: '',
-                attribution: '',
-                provider: item.provider || 'tts',
-                voiceId: (item as ChunksAwareResource).voiceId || item.provider || '',
-                createdAt: new Date().toISOString().slice(0, 10),
-                mseFocus: 'sound' as const,
-                resistanceTag: 'batch',
-                lessonId: 'batch-library',
-                mirrorGoal: 'prosody' as const,
-              } satisfies ChunksAwareResource
-            }))
-            setPromotedResources((current) => {
-              const merged = [...current, ...promoted]
-              return merged.filter((item, idx, arr) => idx === arr.findIndex((e) => e.id === item.id))
-            })
-            setStaged([])
-            setBatchProgress(null)
-            setLog(`✓ ${promoted.length} clips imported to library.`)
-          } catch (err) {
-            setLog(`Auto-import failed: ${errorMessage(err)}`)
-          }
-        })()
-        return latestStaged
+        if (latestStaged.length === 0) return latestStaged
+        const now = Date.now()
+        const promoted: ChunksAwareResource[] = latestStaged.map((item, i) => ({
+          ...item,
+          id: item.id?.startsWith('lib-') ? item.id : `lib-${item.id || now + i}`,
+          approvalStatus: 'approved_resource' as const,
+          license: 'local tts batch',
+          provenanceUrl: '',
+          attribution: '',
+          resistanceTag: 'batch',
+          lessonId: 'batch-library',
+        }))
+        setPromotedResources((current) => {
+          const merged = [...current, ...promoted]
+          return merged.filter((item, idx, arr) => idx === arr.findIndex((e) => e.id === item.id))
+        })
+        setBatchProgress(null)
+        setLog(`✓ ${promoted.length} clips synced to cloud.`)
+        return []
       })
     }
   }
