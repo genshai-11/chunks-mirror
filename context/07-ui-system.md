@@ -55,10 +55,10 @@ The product visual language. Read before any UI work; reuse tokens/components; u
 
 ## Signature component — the Mirror Button
 
-- One large circular/`rounded-[--r-pill]` primary action, centered, `w-64 h-64`.
-- States remain internal: `idle` → `preparing` → `playingOriginal` → `recordingCopy` → `betweenItems`/`waitingNext`.
+- One large circular/`rounded-[--r-pill]` primary action, centered. Desktop `w-64 h-64`; mobile sizes responsively via `w-[min(72vw,14rem)]` (aspect-square).
+- States remain internal: `idle` → `preparing` → `playingOriginal` → `recordingCopy` → `awaitingCopy` → `betweenItems`/`waitingNext`. `awaitingCopy` is the self-paced gate (offline/custom) where the room waits for a tap before recording C; it shows a red record dot + halo invite.
 - Tactile: `:active` → `scale-[0.98]`.
-- During `recordingCopy`, show CSS-only `ring-pulse-fade` halo.
+- During `recordingCopy` **and** `awaitingCopy`, show CSS-only `ring-pulse-fade` halo (accent).
 - During active sound phases, tiny wave rods may appear **inside the button only**.
 - No visible phrase text, phase label, logs, or counters outside the button.
 
@@ -72,7 +72,8 @@ The product visual language. Read before any UI work; reuse tokens/components; u
 | `Pill` (filter chip) | `src/ui/Pill.tsx` | planned |
 | `CountdownRing` | `src/ui/CountdownRing.tsx` | planned |
 | `MirrorButton` | `src/features/mirror/MirrorButton.tsx` | planned |
-| `SettingsBar` | `src/features/settings/SettingsBar.tsx` | implemented — premium control deck with mode/timing/filter/form/flow grouping |
+| `SettingsBar` | `src/features/settings/SettingsBar.tsx` | implemented — Library-page control deck; 4 interaction modes (auto/manual/offline/custom), per-mode hint, flow gates + per-boundary cue toggles surfaced for dynamic modes |
+| `Accordion` (collapsible setup section) | inline in `src/features/mirror/MirrorPage.tsx` | implemented — hide/expand section with chevron; used for the Mirror Room Dynamic Settings sidebar (Mode, Flow, Ending sounds, Timing, Speed, Filters, Mix) |
 | `ResourceTable` | `src/features/resources/ResourceTable.tsx` | planned |
 | `LibraryPanel` | `src/features/resources/LibraryPanel.tsx` | implemented — flat visible admin library view with staged-to-library import, search, filters, bulk select/delete |
 
@@ -80,7 +81,7 @@ The product visual language. Read before any UI work; reuse tokens/components; u
 
 | Page | Path | Status |
 |---|---|---|
-| Mirror (Learner Loop) | `src/features/mirror/MirrorPage.tsx` | implemented — split-stage loop room with retained-copy rail and large countdown dial |
+| Mirror (Learner Loop) | `src/features/mirror/MirrorPage.tsx` | implemented — one-button loop room with a collapsible Dynamic Settings sidebar (own scroll, accordion sections, hide/expand). Sidebar opens by default on desktop, collapsed on mobile; mobile-tuned button sizing, safe-area padding, and the offline `awaitingCopy` gate |
 | Resources (Bank) | `src/features/resources/ResourcesPage.tsx` | planned |
 | Current resource bank UI | `LibraryPanel` inside `src/features/resources/LibraryPanel.tsx` | flat visible admin list + search + source/category/language/form filters + staged-to-library import + multi-select bulk delete |
 | Settings (Dynamic) | `src/features/settings/SettingsPage.tsx` | planned |

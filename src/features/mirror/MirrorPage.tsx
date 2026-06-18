@@ -55,6 +55,14 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const controllerRef = useRef<MirrorLoopController | null>(null)
   const copyPreviewUrlRef = useRef<string | null>(null)
 
+  // Live refs so the controller reads current settings/pool without being recreated.
+  // Recreating it would reset the loop to idle — fatal for the dynamic offline/custom
+  // modes, which are designed to be reconfigured mid-session.
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+  const poolRef = useRef(pool)
+  poolRef.current = pool
+
   const showLog = useCallback((msg: string) => onLog?.(msg), [onLog])
 
   const retainCopyPreview = useCallback((blob?: Blob) => {
@@ -69,8 +77,8 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
     const controller = new MirrorLoopController({
       playback: playbackRef.current,
       mic: micRef.current,
-      getSettings: () => settings,
-      getPool: () => pool,
+      getSettings: () => settingsRef.current,
+      getPool: () => poolRef.current,
       onPhaseChange: (p) => setPhase(p),
       onCurrentItemChange: (item) => setCurrent(item),
       onLog: showLog,
@@ -87,7 +95,8 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
     setPhase('idle')
     setCurrent(null)
     return () => { controller.stop() }
-  }, [pool, retainCopyPreview, settings, showLog])
+    // Created once: settings/pool are read live via refs so toggling them never resets the loop.
+  }, [retainCopyPreview, showLog])
 
   useEffect(() => () => {
     if (copyPreviewUrlRef.current) {

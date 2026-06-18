@@ -4,6 +4,12 @@ Append-only. Newest on top. Status: `Accepted` (human-confirmed) · `Candidate` 
 
 ---
 
+## ADR-0012 — Four dynamic interaction modes + flow gates + per-boundary cues
+- **Status:** Accepted (2026-06-18)
+- **Decision:** Expand the Mirror Room from 2 to **4 interaction modes**: `auto`, `manual`, `offline`, `custom`. Flow is driven by two gates — `autoAdvance` (roll into next item vs wait between items) and `gateBeforeCopy` (new `awaitingCopy` phase: wait for a tap before recording C). The single ending cue is split into **three per-boundary cues** — `cueOnListen` (G→O), `cueOnMirror` (O→C, the classic signal), `cueOnEnd` (C→next). `auto`/`manual` are fixed presets (apply preset flags on select); `offline` is a self-paced preset whose gates remain editable; `custom` exposes every gate and cue. Presets live in `src/domain/roomModes.ts` (`applyMode`); custom preserves the learner's current flags. Dynamic Settings is now a collapsible accordion sidebar with its own scroll, and the controller reads settings via live refs so mid-session toggles never reset the loop.
+- **Why:** Lucy's request — more dynamic mode setup: a self-paced "offline" mode (tap when ready to mirror, tap to advance) and a fully configurable "custom" mode (custom timing + on/off ending sounds per state), with the existing auto/manual kept intact. Mobile UI/UX of the Mirror Room improved alongside.
+- **Impact:** Updated `domain/types.ts` (InteractionMode + RoomSettings + LoopPhase), `domain/mirrorLoop.ts` (awaitingCopy, `beginCopy()`, per-boundary cues, autoAdvance), new `domain/roomModes.ts`, `MirrorPage.tsx` (4-mode selector, collapsible sidebar, live-ref controller), `SettingsBar.tsx`, `App.tsx` defaults, and docs (CONTEXT, 07-ui-system, 04-operating-state). **Supersedes ADR-0005.** `endingCue` field replaced by `cueOnListen|cueOnMirror|cueOnEnd`.
+
 ## ADR-0011 — Sentence Form + multi-model library generation
 - **Status:** Accepted (2026-06-16)
 - **Decision:** Extend the library generator and Dynamic Settings with explicit `form` ("short" / "long") for speech resources. Resource Bank + selection support filtering by it. Generator accepts `--model` (edge-tts default, `el/eleven_multilingual_v2`, `google-tts`, `deepgram/...`) at re-run time.
@@ -36,9 +42,10 @@ Append-only. Newest on top. Status: `Accepted` (human-confirmed) · `Candidate` 
 - **Why:** Lucy: "hiện tại tạm không chấm." Keep the loop pure; avoid overpromising an immature score.
 
 ## ADR-0005 — Interaction Mode: auto + manual; Timing configurable
-- **Status:** Accepted (2026-06-16)
+- **Status:** Superseded by ADR-0012 (2026-06-18)
 - **Decision:** Room supports `auto` (auto-advance) and `manual` (leader taps next). G/O and C durations configurable, default 3s/3s. Optional ending-sound cue plays after O and before C.
 - **Why:** Lucy's dynamic-room requirement for both solo and led sessions.
+- **Superseded:** ADR-0012 expands to 4 modes (adds `offline`, `custom`), introduces flow gates, and splits the single ending cue into three per-boundary cues.
 
 ---
 
