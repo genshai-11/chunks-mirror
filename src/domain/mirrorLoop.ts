@@ -7,6 +7,7 @@ export type LoopPhase =
   | 'preparing'        // G
   | 'playingOriginal'  // O
   | 'recordingCopy'    // C
+  | 'awaitingCopy'     // self-paced gate before C (offline / custom)
   | 'betweenItems'
   | 'waitingNext'
 
@@ -20,8 +21,9 @@ export interface MirrorLoopControllerOptions {
   onLog: (message: string) => void
   onAttempt?: (attempt: MirrorAttempt) => void
   onCountdown?: (remaining: number, phase: 'O' | 'C') => void
-  playEndingCue?: () => void | Promise<void>
-  playAfterCopyCue?: () => void | Promise<void>
+  playListenCue?: () => void | Promise<void>   // G → O boundary
+  playEndingCue?: () => void | Promise<void>    // O → C boundary ("mirror")
+  playAfterCopyCue?: () => void | Promise<void> // C → next boundary ("done")
 }
 
 export class MirrorLoopController {
@@ -64,7 +66,7 @@ export class MirrorLoopController {
     this.opts.onLog('Stopped')
   }
 
-  // For manual mode: advance to next item
+  // For manual / offline / custom modes: advance to next item
   next() {
     if (!this.isRunning) return
     this.clearTimer()
@@ -73,6 +75,13 @@ export class MirrorLoopController {
       this.opts.mic.stop().catch(() => {})
     }
     this.advance()
+  }
+
+  // For offline / custom self-paced gate: begin Copy Capture when the learner is ready
+  beginCopy() {
+    if (!this.isRunning || this.phase !== 'awaitingCopy') return
+    this.clearTimer()
+    this.startCopyCapture(this.opts.getSettings())
   }
 
   private rebuildQueue() {
@@ -115,8 +124,22 @@ export class MirrorLoopController {
     const prepDelay = 450 // small visual prep like prototype
 
     this.timer = window.setTimeout(() => {
-      this.playOriginal(settings)
+      void this.playListenCueThenOriginal(settings)
     }, prepDelay)
+  }
+
+  private async playListenCueThenOriginal(settings: RoomSettings) {
+    if (!this.current || !this.isRunning) return
+
+    if (settings.cueOnListen && this.opts.playListenCue) {
+      try {
+        await this.opts.playListenCue()
+      } catch {
+        // cue failure should never block O
+      }
+    }
+
+    if (this.isRunning) this.playOriginal(settings)
   }
 
   private playOriginal(settings: RoomSettings) {
@@ -142,7 +165,7 @@ export class MirrorLoopController {
   private async playCueThenCopy(settings: RoomSettings) {
     if (!this.current || !this.isRunning) return
 
-    if (settings.endingCue && this.opts.playEndingCue) {
+    if (settings.cueOnMirror && this.opts.playEndingCue) {
       try {
         await this.opts.playEndingCue()
       } catch {
@@ -150,9 +173,16 @@ export class MirrorLoopController {
       }
     }
 
-    if (this.isRunning) {
-      this.startCopyCapture(settings)
+    if (!this.isRunning) return
+
+    // Self-paced gate: wait for a tap before recording C (offline / custom)
+    if (settings.gateBeforeCopy) {
+      this.setPhase('awaitingCopy')
+      this.opts.onLog('Ready when you are ▸ tap to mirror')
+      return
     }
+
+    this.startCopyCapture(settings)
   }
 
   private startCopyCapture(settings: RoomSettings) {
@@ -185,7 +215,7 @@ export class MirrorLoopController {
           void error
         }
 
-        if (this.opts.playAfterCopyCue) {
+        if (settings.cueOnEnd && this.opts.playAfterCopyCue) {
           try { await this.opts.playAfterCopyCue() } catch { /* cue failure never blocks loop */ }
         }
 
@@ -210,9 +240,7 @@ export class MirrorLoopController {
     }
     this.opts.onAttempt?.(attempt)
 
-    const isAuto = settings.mode === 'auto'
-
-    if (isAuto && this.isRunning) {
+    if (settings.autoAdvance && this.isRunning) {
       this.opts.onLog('… next (auto)')
       this.setPhase('preparing') // brief visual
       this.timer = window.setTimeout(() => {
@@ -220,7 +248,7 @@ export class MirrorLoopController {
       }, 700)
     } else {
       this.setPhase('waitingNext')
-      this.opts.onLog('Waiting for Next ▸ (manual mode)')
+      this.opts.onLog('Waiting for Next ▸')
     }
   }
 

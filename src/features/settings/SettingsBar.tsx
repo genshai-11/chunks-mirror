@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { RoomSettings } from '../../domain/types'
+import { INTERACTION_MODES, MODE_META, modeIsDynamic, applyMode } from '../../domain/roomModes'
 
 interface Props {
   settings: RoomSettings
@@ -44,9 +45,9 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
       <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
         <Field label="Mode">
           <div className="grid grid-cols-2 gap-1 rounded-[10px] border border-[--line] bg-[--bg] p-1">
-            {(['auto', 'manual'] as const).map((mode) => (
-              <SegmentButton key={mode} active={settings.mode === mode} onClick={() => set('mode', mode)}>
-                {mode}
+            {INTERACTION_MODES.map((mode) => (
+              <SegmentButton key={mode} active={settings.mode === mode} onClick={() => onChange(applyMode(settings, mode))}>
+                {MODE_META[mode].label}
               </SegmentButton>
             ))}
           </div>
@@ -98,16 +99,33 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
         </Field>
       </div>
 
+      <div className="border-t border-[--line] px-4 py-3">
+        <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">{MODE_META[settings.mode].hint}</div>
+      </div>
+
       <div className="grid gap-3 border-t border-[--line] px-4 py-3 md:grid-cols-2">
-        <label className="flex items-center gap-3 rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg]">
-          <input type="checkbox" checked={settings.randomMix} onChange={(e) => set('randomMix', e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
-          Random mix
-        </label>
-        <label className="flex items-center gap-3 rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg]">
-          <input type="checkbox" checked={settings.endingCue} onChange={(e) => set('endingCue', e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
-          Ending cue
-        </label>
+        <Check label="Random mix" checked={settings.randomMix} onChange={(v) => set('randomMix', v)} />
+        {modeIsDynamic(settings.mode) ? (
+          <>
+            <Check label="Auto-advance" checked={settings.autoAdvance} onChange={(v) => set('autoAdvance', v)} />
+            <Check label="Pause before mirror" checked={settings.gateBeforeCopy} onChange={(v) => set('gateBeforeCopy', v)} />
+            <Check label="Cue · listen (G→O)" checked={settings.cueOnListen} onChange={(v) => set('cueOnListen', v)} />
+            <Check label="Cue · mirror (O→C)" checked={settings.cueOnMirror} onChange={(v) => set('cueOnMirror', v)} />
+            <Check label="Cue · end (C→next)" checked={settings.cueOnEnd} onChange={(v) => set('cueOnEnd', v)} />
+          </>
+        ) : (
+          <Check label="Ending cue" checked={settings.cueOnMirror} onChange={(v) => set('cueOnMirror', v)} />
+        )}
       </div>
     </section>
+  )
+}
+
+function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-3 rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg]">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
+      {label}
+    </label>
   )
 }
