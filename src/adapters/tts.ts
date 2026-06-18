@@ -34,6 +34,52 @@ export function voiceForLang(lang: string): string {
   return VOICE_MAP[lang] ?? 'edge-tts/en-US-AriaNeural'
 }
 
+export interface TtsModel {
+  id: string
+  multilingual: boolean
+  provider: string // 'edge-tts' | 'elevenlabs' | 'openai' | 'google' | 'other'
+}
+
+// Heuristic: flag models likely to support multiple languages
+export function isMultilingual(id: string): boolean {
+  const lower = id.toLowerCase()
+  return (
+    lower.includes('multilingual') ||
+    lower.includes('eleven_') ||
+    lower.startsWith('el/') ||
+    lower.startsWith('openai/') ||
+    lower.startsWith('google-tts/') ||
+    lower.startsWith('azure/') ||
+    lower.startsWith('ms-') ||
+    lower.includes('turbo') ||
+    lower.includes('flash')
+  )
+}
+
+function providerOf(id: string): string {
+  if (id.startsWith('edge-tts/')) return 'edge-tts'
+  if (id.startsWith('el/') || id.includes('eleven')) return 'elevenlabs'
+  if (id.startsWith('openai/') || id.startsWith('tts-')) return 'openai'
+  if (id.startsWith('google-tts/')) return 'google'
+  if (id.startsWith('azure/') || id.startsWith('ms-')) return 'azure'
+  return 'other'
+}
+
+export async function listModels(): Promise<TtsModel[]> {
+  const res = await fetch('/api/list-models')
+  if (!res.ok) return []
+  const data = await res.json()
+  const raw: Array<{ id: string }> = data?.data || []
+  return raw
+    .filter((m) => typeof m.id === 'string' && m.id.length > 0)
+    .map((m) => ({ id: m.id, multilingual: isMultilingual(m.id), provider: providerOf(m.id) }))
+    .sort((a, b) => {
+      // multilingual first, then alphabetical by provider+id
+      if (a.multilingual !== b.multilingual) return a.multilingual ? -1 : 1
+      return a.id.localeCompare(b.id)
+    })
+}
+
 export interface GenerateSpeechParams {
   model: string // e.g. "edge-tts/en-US-AriaNeural", "el/eleven_multilingual_v2", "google-tts/vi"
   input: string

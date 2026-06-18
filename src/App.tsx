@@ -5,7 +5,7 @@ import LibraryPanel from './features/resources/LibraryPanel'
 import type { RoomSettings, ChunksAwareResource } from './domain/types'
 import { LocalJsonStorageAdapter } from './adapters/localJsonStorage'
 import { buildPool } from './domain/selection'
-import { voiceForLang, generateSpeech } from './adapters/tts'
+import { voiceForLang, generateSpeech, listModels, type TtsModel } from './adapters/tts'
 
 type ThemeMode = 'dark' | 'light'
 
@@ -89,8 +89,11 @@ export default function App() {
   const [batchForm, setBatchForm] = useState<'short' | 'medium' | 'long'>('medium')
   const [batchSelectedLangs, setBatchSelectedLangs] = useState<string[]>(['vi', 'en', 'fr', 'zh', 'ja', 'ko'])
   const [batchQty, setBatchQty] = useState(30)
-  const [autoVoice, setAutoVoice] = useState(true)
+  const [voiceMode, setVoiceMode] = useState<'auto' | 'multi' | 'custom'>('auto')
   const [batchModel, setBatchModel] = useState('el/eleven_multilingual_v2')
+  const [availableModels, setAvailableModels] = useState<TtsModel[]>([])
+  const [selectedModels, setSelectedModels] = useState<string[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
 
   const [preparedTexts, setPreparedTexts] = useState<PreparedText[]>([])
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; message: string } | null>(null)
@@ -437,15 +440,32 @@ export default function App() {
     }
   }
 
+  async function loadModels() {
+    setModelsLoading(true)
+    try {
+      const models = await listModels()
+      setAvailableModels(models)
+      // pre-select all multilingual ones
+      setSelectedModels(models.filter((m) => m.multilingual).map((m) => m.id))
+    } finally {
+      setModelsLoading(false)
+    }
+  }
+
   async function runBatchTTS() {
-    if (!window.confirm(`Run TTS for ${preparedTexts.length} items?\n${autoVoice ? 'Mode: auto voice (edge-tts per language)' : `Model: ${batchModel}`}`)) return
+    const modeLabel = voiceMode === 'auto' ? 'auto voice (edge-tts per language)' : voiceMode === 'multi' ? `multi-voice (${selectedModels.length} models rotating)` : `model: ${batchModel}`
+    if (!window.confirm(`Run TTS for ${preparedTexts.length} items?\nMode: ${modeLabel}`)) return
 
     setBatchProgress({ current: 0, total: preparedTexts.length, message: 'Starting…' })
     let ok = 0
 
     for (let index = 0; index < preparedTexts.length; index += 1) {
       const prepared = preparedTexts[index]
-      const model = autoVoice ? voiceForLang(prepared.language) : batchModel
+      const model = voiceMode === 'auto'
+        ? voiceForLang(prepared.language)
+        : voiceMode === 'multi' && selectedModels.length > 0
+          ? selectedModels[index % selectedModels.length]
+          : batchModel
       setBatchProgress({
         current: index + 1,
         total: preparedTexts.length,
@@ -711,15 +731,58 @@ export default function App() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Voice</span>
-                  <select value={autoVoice ? 'auto' : 'custom'} onChange={(e) => setAutoVoice(e.target.value === 'auto')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]">
-                    <option value="auto">Auto voice</option>
+                  <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Voice mode</span>
+                  <select value={voiceMode} onChange={(e) => setVoiceMode(e.target.value as 'auto' | 'multi' | 'custom')} className="w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]">
+                    <option value="auto">Auto (per language)</option>
+                    <option value="multi">Multi-voice (rotate)</option>
                     <option value="custom">Custom model</option>
                   </select>
                 </label>
               </div>
 
-              {!autoVoice && <input value={batchModel} onChange={(e) => setBatchModel(e.target.value)} className="mt-3 w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]" placeholder="el/eleven_multilingual_v2" />}
+              {voiceMode === 'custom' && <input value={batchModel} onChange={(e) => setBatchModel(e.target.value)} className="mt-3 w-full rounded-[14px] border border-[--line] bg-[--bg] px-3 py-3 font-mono text-sm text-[--fg] outline-none focus:border-[--accent]" placeholder="el/eleven_multilingual_v2" />}
+
+              {voiceMode === 'multi' && (
+                <div className="mt-3 space-y-3 rounded-[14px] border border-[--line] bg-[--bg] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">
+                      {availableModels.length === 0 ? 'Load models from 9router' : `${selectedModels.length} / ${availableModels.length} selected`}
+                    </span>
+                    <div className="flex gap-2">
+                      {availableModels.length > 0 && (
+                        <>
+                          <button onClick={() => setSelectedModels(availableModels.filter((m) => m.multilingual).map((m) => m.id))} className="rounded-[999px] border border-[--line] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:border-[--fg] hover:text-[--fg]">Multilingual</button>
+                          <button onClick={() => setSelectedModels(availableModels.map((m) => m.id))} className="rounded-[999px] border border-[--line] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:border-[--fg] hover:text-[--fg]">All</button>
+                          <button onClick={() => setSelectedModels([])} className="rounded-[999px] border border-[--line] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted] hover:border-[--fg] hover:text-[--fg]">None</button>
+                        </>
+                      )}
+                      <button onClick={loadModels} disabled={modelsLoading} className="rounded-[999px] border border-[--accent] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[--accent] hover:bg-[--accent] hover:text-white disabled:opacity-40">
+                        {modelsLoading ? 'Loading…' : availableModels.length > 0 ? 'Reload' : 'Load models'}
+                      </button>
+                    </div>
+                  </div>
+                  {availableModels.length > 0 && (
+                    <div className="max-h-48 space-y-1 overflow-y-auto">
+                      {availableModels.map((m) => {
+                        const active = selectedModels.includes(m.id)
+                        return (
+                          <label key={m.id} className={`flex cursor-pointer items-center gap-2 rounded-[8px] px-2 py-1.5 transition-colors ${active ? 'bg-[--accent]/10' : 'hover:bg-white/[0.03]'}`}>
+                            <input type="checkbox" checked={active} onChange={() => setSelectedModels((cur) => active ? cur.filter((id) => id !== m.id) : [...cur, m.id])} style={{ accentColor: 'var(--accent)' }} />
+                            <span className="flex-1 truncate font-mono text-[11px] text-[--fg]">{m.id}</span>
+                            {m.multilingual && <span className="shrink-0 rounded-[4px] bg-emerald-400/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-emerald-400">multi</span>}
+                            <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] text-[--fg-muted]">{m.provider}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {selectedModels.length > 0 && (
+                    <div className="font-mono text-[10px] text-[--fg-muted]">
+                      Rotation: {selectedModels.map((id) => id.replace('edge-tts/', '').replace('el/', '')).join(' → ')}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="mt-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">

@@ -10,6 +10,7 @@
     "api/generate-text.ts": { "maxDuration": 300 },
     "api/upload-audio.ts": { "maxDuration": 60 },
     "api/list-audio.ts": { "maxDuration": 30 },
-    "api/delete-audio.ts": { "maxDuration": 30 }
+    "api/delete-audio.ts": { "maxDuration": 30 },
+    "api/list-models.ts": { "maxDuration": 15 }
   }
 }
