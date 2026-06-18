@@ -346,6 +346,12 @@ export default function App() {
       setDeletedResourceIds((current) => Array.from(new Set([...current, ...deleteIds])))
     }
 
+    // Fire-and-forget Blob deletion so other devices stop seeing these items
+    const blobUrls = uniqueItems.map((item) => item.audioUrl).filter((url): url is string => typeof url === 'string' && url.startsWith('https://'))
+    for (const url of blobUrls) {
+      fetch('/api/delete-audio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) }).catch(() => {})
+    }
+
     setLog(uniqueItems.length === 1 ? 'Library item deleted.' : `${uniqueItems.length} library items deleted.`)
   }
 
@@ -382,8 +388,13 @@ export default function App() {
         + 'Purpose: rhythm, prosody, intonation practice - NOT grammar drills.\n\n'
         + `Form: ${batchForm} - ${FORM_SPEC[batchForm]}\n`
         + `Level: ${batchLevel} - ${LEVEL_SPEC[batchLevel]}\n\n`
-        + `Mix these languages with equal random distribution: ${batchSelectedLangs.join(', ')}\n\n`
-        + 'CRITICAL: Count SYLLABLES carefully (not words). Every sentence MUST respect the syllable-count rule above.\n'
+        + `Distribute evenly across these languages: ${batchSelectedLangs.join(', ')}\n\n`
+        + 'CRITICAL RULES:\n'
+        + '1. Count SYLLABLES carefully (not words). Every sentence MUST respect the syllable-count rule above.\n'
+        + '2. Each sentence MUST have a completely DIFFERENT random topic. Do NOT translate the same idea into multiple languages.\n'
+        + '   Wrong: "I want coffee" in EN, then "Je veux du café" in FR (same idea = translation).\n'
+        + '   Right: "I want coffee" in EN, then "The rain is loud" in FR (different topics).\n'
+        + '3. Topics must be varied: emotions, nature, daily life, food, time, people, places, sounds — spread randomly.\n'
         + 'Output ONLY a valid JSON array, no markdown, no explanation:\n'
         + '[{"text":"sentence here","lang":"ISO-639-1-code"}, ...]'
 
