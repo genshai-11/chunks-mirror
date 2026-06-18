@@ -128,7 +128,7 @@ export class MirrorLoopController {
     this.opts.onLog(`O • ${this.current.textPrompt} (${oSeconds}s)`)
 
     // Start playback (fire and forget timing — controller owns countdown)
-    this.opts.playback.play(this.current).catch((e) => {
+    this.opts.playback.play(this.current, settings.playbackRate ?? 1).catch((e) => {
       this.opts.onLog(`Playback error: ${e?.message || e}`)
     })
 

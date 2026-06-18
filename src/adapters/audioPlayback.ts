@@ -1,7 +1,7 @@
 import type { ChunksAwareResource } from '../domain/types'
 
 export interface AudioPlaybackAdapter {
-  play(item: ChunksAwareResource | { audioUrl: string }): Promise<void>
+  play(item: ChunksAwareResource | { audioUrl: string }, playbackRate?: number): Promise<void>
   stop(): void
   isPlaying(): boolean
 }
@@ -15,18 +15,17 @@ export class BrowserAudioPlaybackAdapter implements AudioPlaybackAdapter {
   private audio: HTMLAudioElement | null = null
   // currentUrl tracking removed (not needed for ignition)
 
-  async play(item: ChunksAwareResource | { audioUrl: string }): Promise<void> {
+  async play(item: ChunksAwareResource | { audioUrl: string }, playbackRate = 1): Promise<void> {
     const url = 'audioUrl' in item ? item.audioUrl : (item as ChunksAwareResource).audioUrl
 
     this.stop()
 
     this.audio = new Audio(url)
+    this.audio.playbackRate = Math.max(0.25, Math.min(4, playbackRate))
 
-    // Make sure it can play (some browsers need interaction already happened)
     try {
       await this.audio.play()
     } catch (err) {
-      // Re-throw so controller can handle (e.g. show message)
       this.audio = null
       throw err
     }

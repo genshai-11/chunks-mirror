@@ -35,6 +35,7 @@ const DEFAULT_SETTINGS: RoomSettings = {
   mode: 'auto',
   oSeconds: 3,
   cSeconds: 3,
+  playbackRate: 1,
   category: '',
   language: '',
   level: '',

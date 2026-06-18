@@ -55,6 +55,7 @@ export interface RoomSettings {
   mode: InteractionMode
   oSeconds: number
   cSeconds: number
+  playbackRate: number
   category?: SoundCategory | ''
   language?: string | ''
   level?: number | ''

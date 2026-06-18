@@ -303,6 +303,41 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
             </div>
           </SideSection>
 
+          {/* Speed */}
+          <SideSection label="Speed">
+            <div className="flex items-center gap-1 rounded-[7px] border border-[--line] bg-[--bg] px-2 py-1.5">
+              <button
+                type="button"
+                onClick={() => set('playbackRate', Math.max(0.5, Math.round((settings.playbackRate ?? 1) * 10 - 1) / 10))}
+                className="font-mono text-base leading-none text-[--fg-muted] hover:text-[--fg]"
+              >−</button>
+              <span className="flex-1 text-center font-mono text-sm tabular-nums text-[--fg]">
+                {(settings.playbackRate ?? 1).toFixed(1)}×
+              </span>
+              <button
+                type="button"
+                onClick={() => set('playbackRate', Math.min(2, Math.round((settings.playbackRate ?? 1) * 10 + 1) / 10))}
+                className="font-mono text-base leading-none text-[--fg-muted] hover:text-[--fg]"
+              >+</button>
+            </div>
+            <div className="flex justify-between gap-1">
+              {[0.5, 0.75, 1, 1.25, 1.5].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => set('playbackRate', r)}
+                  className={`flex-1 rounded-[6px] border py-1 font-mono text-[8px] tabular-nums transition-all ${
+                    (settings.playbackRate ?? 1) === r
+                      ? 'border-[--accent] bg-[--accent] text-white'
+                      : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
+                  }`}
+                >
+                  {r}×
+                </button>
+              ))}
+            </div>
+          </SideSection>
+
           {/* Category */}
           <SideSection label="Category">
             <div className="flex flex-wrap gap-1.5">
