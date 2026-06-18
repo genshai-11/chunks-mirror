@@ -95,6 +95,7 @@ export default function App() {
   const [preparedTexts, setPreparedTexts] = useState<PreparedText[]>([])
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; message: string } | null>(null)
   const [genBusy, setGenBusy] = useState(false)
+  const [genElapsed, setGenElapsed] = useState(0)
   const [preparedSelection, setPreparedSelection] = useState<string[]>([])
 
   const [libFilterCat, setLibFilterCat] = useState('')
@@ -356,11 +357,16 @@ export default function App() {
     }
 
     setGenBusy(true)
+    setGenElapsed(0)
+    const startTime = Date.now()
+    const elapsedTimer = window.setInterval(() => {
+      setGenElapsed(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
     try {
       const FORM_SPEC: Record<string, string> = {
-        short: '2-4 words STRICTLY (greetings, labels, exclamations; never exceed 4 words)',
-        medium: '5-14 words STRICTLY (natural daily conversation; never below 5 or above 14)',
-        long: '15-25 words STRICTLY (expressive multi-clause sentences; never below 15 or above 25)',
+        short: '1-3 words STRICTLY (single words, short labels, greetings; never exceed 3 words)',
+        medium: '4-8 words STRICTLY (short phrases, natural expressions; never below 4 or above 8 words)',
+        long: '9-15 words STRICTLY (full sentences; never below 9 or above 15 words)',
       }
       const LEVEL_SPEC: Record<number, string> = {
         1: 'simple daily expressions, familiar vocabulary, one idea per sentence',
@@ -425,7 +431,9 @@ export default function App() {
     } catch (error: unknown) {
       setLog(`Generate text failed: ${errorMessage(error)}`)
     } finally {
+      clearInterval(elapsedTimer)
       setGenBusy(false)
+      setGenElapsed(0)
     }
   }
 
@@ -755,7 +763,9 @@ export default function App() {
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[--line] pt-5">
-                <button onClick={generateTextsReal} disabled={genBusy || batchSelectedLangs.length === 0} className="rounded-[999px] bg-[--accent] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-white transition-all hover:bg-[--accent-press] active:scale-[0.98] disabled:opacity-40">{genBusy ? 'Generating…' : 'Generate texts'}</button>
+                <button onClick={generateTextsReal} disabled={genBusy || batchSelectedLangs.length === 0} className="rounded-[999px] bg-[--accent] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-white transition-all hover:bg-[--accent-press] active:scale-[0.98] disabled:opacity-40">
+                  {genBusy ? `Generating… ${genElapsed}s` : 'Generate texts'}
+                </button>
                 {preparedTexts.length > 0 && <button onClick={() => deletePreparedTexts(preparedTexts.map((item) => item.tempId))} className="rounded-[999px] border border-[--line] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[--fg-muted] transition-all hover:border-[--accent] hover:text-[--accent] active:scale-[0.98]">Clear</button>}
               </div>
             </section>
