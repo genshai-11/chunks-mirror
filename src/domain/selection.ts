@@ -1,4 +1,19 @@
-import type { ChunksAwareResource, RoomSettings } from './types'
+import type { ChunksAwareResource, RoomSettings, SentenceForm } from './types'
+
+export function estimateSyllables(text?: string): number {
+  // Rough cross-language estimator: count vowel nuclei.
+  return ((text || '').toLowerCase().match(/[aáàâãäåæeéèêëiíìîïoóòôõöøuúùûüyýÿаеёиоуыэюяіїєАЕЁИОУЫЭЮЯІЇЄ]/g) || []).length || 1
+}
+
+export function resolveSentenceForm(resource: Pick<ChunksAwareResource, 'category' | 'form' | 'textPrompt' | 'soundPrompt'>): SentenceForm | null {
+  if (resource.form === 'short' || resource.form === 'medium' || resource.form === 'long') return resource.form
+  if (resource.category !== 'speech') return null
+
+  const syllableCount = estimateSyllables(resource.textPrompt || resource.soundPrompt)
+  if (syllableCount <= 3) return 'short'
+  if (syllableCount <= 6) return 'medium'
+  return 'long'
+}
 
 export function filterResources(
   resources: ChunksAwareResource[],
@@ -12,15 +27,10 @@ export function filterResources(
     if (language && r.language !== language) return false
     if (level && String(r.level) !== String(level)) return false
     if (sentenceForm && sentenceForm !== 'all') {
-      if (r.form && r.form !== sentenceForm) return false
+      if (resolveSentenceForm(r) !== sentenceForm) return false
     }
     return true
   })
-
-  if (pool.length === 0) {
-    // Fallback to all approved when filters are too strict
-    pool = resources.filter((r) => r.approvalStatus === 'approved_resource')
-  }
 
   if (settings.randomMix) {
     // Stable-ish shuffle using simple hash of level + text length (same spirit as prototype)

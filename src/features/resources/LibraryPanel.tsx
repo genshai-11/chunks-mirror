@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import type { SoundCategory } from '../../domain/types'
 import { langName } from '../../domain/languages'
+import { resolveSentenceForm } from '../../domain/selection'
 
 type LibraryItem = {
   id?: string
@@ -55,17 +56,13 @@ const FORM_ORDER: LibraryForm[] = ['all', 'short', 'medium', 'long']
 const SOURCE_ORDER: SourceFilter[] = ['all', 'approved', 'staged']
 const SOURCE_LABEL: Record<SourceFilter, string> = { all: 'All', approved: 'Approved', staged: 'Staged' }
 
-function estimateSyllables(text?: string): number {
-  // Rough cross-language estimator: count vowel nuclei
-  return ((text || '').toLowerCase().match(/[aáàâãäåæeéèêëiíìîïoóòôõöøuúùûüyýÿаеёиоуыэюяіїєАЕЁИОУЫЭЮЯІЇЄ]/g) || []).length || 1
-}
-
-function resolveForm(item: Pick<LibraryItem, 'form' | 'textPrompt' | 'soundPrompt'>): Exclude<LibraryForm, 'all'> {
-  if (item.form === 'short' || item.form === 'medium' || item.form === 'long') return item.form
-  const sc = estimateSyllables(item.textPrompt || item.soundPrompt)
-  if (sc <= 3) return 'short'
-  if (sc <= 6) return 'medium'
-  return 'long'
+function resolveForm(item: Pick<LibraryItem, 'category' | 'form' | 'textPrompt' | 'soundPrompt'>): Exclude<LibraryForm, 'all'> {
+  return resolveSentenceForm({
+    category: item.category as SoundCategory,
+    form: item.form as 'short' | 'medium' | 'long' | undefined,
+    textPrompt: item.textPrompt,
+    soundPrompt: item.soundPrompt,
+  }) || 'short'
 }
 
 function getItemText(item: Pick<LibraryItem, 'textPrompt' | 'soundPrompt'>) {
