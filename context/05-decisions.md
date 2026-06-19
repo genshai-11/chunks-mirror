@@ -4,6 +4,12 @@ Append-only. Newest on top. Status: `Accepted` (human-confirmed) · `Candidate` 
 
 ---
 
+## ADR-0012 — Firebase Hosting + Functions + Cloud Storage target
+- **Status:** Accepted (2026-06-19)
+- **Decision:** Reserve Firebase Hosting site `chunks-mirror` (`https://chunks-mirror.web.app`) under project `chunks-voicecloning-genshai` using billing account `billingAccounts/01D865-65ADBD-FFF086`. Move `/api/*` runtime from Vercel serverless/Blob to Firebase Functions in `asia-east1`; generated/imported audio is persisted in project Cloud Storage bucket `gs://chunks-mirror-audio-284566312743/audio/` with metadata sidecars.
+- **Why:** Lucy chose Firebase direction over Vercel Blob; this keeps Hosting, API proxy, secrets, and generated audio under the Firebase/GCP project while preserving local JSON/audio as seed data.
+- **Impact:** `.firebaserc`, `firebase.json`, `functions/`, package dependencies, app wording, and deploy runbook updated. Production deploy remains gated by Release Control.
+
 ## ADR-0011 — Sentence Form + multi-model library generation
 - **Status:** Accepted (2026-06-16)
 - **Decision:** Extend the library generator and Dynamic Settings with explicit `form` ("short" / "long") for speech resources. Resource Bank + selection support filtering by it. Generator accepts `--model` (edge-tts default, `el/eleven_multilingual_v2`, `google-tts`, `deepgram/...`) at re-run time.
@@ -46,8 +52,8 @@ Append-only. Newest on top. Status: `Accepted` (human-confirmed) · `Candidate` 
 
 - **Hybrid Source Strategy** — speech (from text DB) + curated/imported mimicable SFX both enter the bank; generated SFX pre-generated. *(Accepted)*
 - **Hybrid Safe approval** — `candidate → license_checked → approved_resource`; only approved play. *(Accepted)*
-- **Local Resource Bank + cloud-ready interfaces** — local JSON/audio behind `StorageAdapter`. *(Accepted)*
+- **Local Resource Bank + Firebase cloud persistence** — local JSON/audio remains as seed data; generated/imported cross-device audio goes through Firebase Functions to project Cloud Storage. *(Accepted)*
 - **Chunks-Aware Resource schema** — production metadata + Chunks intent fields. *(Accepted, extended with `category`, `provider`, `voiceId`)*
 - **Minimal tabs** — `Mirror | Resources | Settings`. *(Accepted)*
 - **Chunks App Pattern stack** — React/Vite/TS, Firebase Hosting, `/api/*` proxy. *(Candidate — confirm at build-plan gate)*
-- **Firebase Preview-Ready** first target; production requires Release Control. *(Accepted)*
+- **Firebase Preview-Ready** first target at `chunks-mirror.web.app`; production requires Release Control. *(Accepted)*

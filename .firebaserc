@@ -1,5 +1,14 @@
 {
   "projects": {
-    "default": "chunks-mirror-sound-preview"
+    "default": "chunks-voicecloning-genshai"
+  },
+  "targets": {
+    "chunks-voicecloning-genshai": {
+      "hosting": {
+        "chunks-mirror": [
+          "chunks-mirror"
+        ]
+      }
+    }
   }
 }

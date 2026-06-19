@@ -63,7 +63,7 @@ The app (after scaffold) consumes the same library + supports Sentence Form filt
 
 ### In-app generation
 
-The app calls the **same-origin proxy** `POST /api/tts` (never 9router directly from the browser). The proxy injects `NINEROUTER_KEY`, forwards to `/v1/audio/speech`, returns audio. Generated clips are persisted to `public/resources/audio/speech/` and a `ChunksAwareResource` row is appended to `src/data/resources.json` with `approvalStatus: candidate` until reviewed.
+The app calls the **same-origin proxy** `POST /api/tts` (never 9router directly from the browser). Firebase Functions inject `NINEROUTER_KEY`, forward to `/v1/audio/speech`, return audio, and persist generated clips through `/api/upload-audio` to `gs://chunks-mirror-audio-284566312743/audio/` with `.meta.json` sidecars. Local `public/resources/audio/` remains the seed bank.
 
 ## Import audio (curated or user upload)
 
@@ -84,10 +84,10 @@ npm run preview   # serve the production build locally
 Production deploys are **not** part of v1. When the time comes:
 
 1. Clean working tree; `git commit`; `git tag vX.Y.Z`.
-2. Move `/api/*` to Firebase Functions; set key: `firebase functions:config:set ninerouter.key="..."`.
-3. `firebase hosting:channel:deploy preview` → validate the preview/canary URL.
-4. Only then `firebase deploy` to production.
-5. **Rollback:** `firebase hosting:rollback`; redeploy the prior git tag; verify Functions config restored.
+2. Verify `/api/*` Firebase Functions are configured; set secrets: `firebase functions:secrets:set NINEROUTER_KEY` and optional `firebase functions:secrets:set ADMIN_SECRET`.
+3. `firebase hosting:channel:deploy preview --only hosting:chunks-mirror,functions` → validate the preview/canary URL.
+4. Only then `firebase deploy --only hosting:chunks-mirror,functions` to production.
+5. **Rollback:** `firebase hosting:rollback`; redeploy the prior git tag/functions; verify Secret Manager values and `chunks-mirror-audio-284566312743` bucket access restored.
 6. Verify Hosting + Functions restore path before declaring done.
 
 ## Progress board

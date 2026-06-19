@@ -137,50 +137,50 @@ export default function App() {
   }, [promotedResources])
 
   useEffect(() => {
-    // On mount, fetch remote audio from Vercel Blob.
-    // Blob is the source of truth for https:// items: any local https:// entry
-    // whose URL is no longer in Blob (deleted on another device) gets pruned.
+    // On mount, fetch remote audio from Firebase Storage.
+    // Firebase Storage is the source of truth for https:// items: any local https:// entry
+    // whose URL is no longer in Storage (deleted on another device) gets pruned.
     fetch('/api/list-audio')
       .then((r) => r.ok ? r.json() : Promise.reject(new Error(`list-audio ${r.status}`)))
       .then((data: { items: Array<Record<string, unknown>> }) => {
-        const blobItems = Array.isArray(data.items) ? data.items : []
-        const blobUrls = new Set(blobItems.map((item) => item.url as string))
+        const cloudItems = Array.isArray(data.items) ? data.items : []
+        const cloudUrls = new Set(cloudItems.map((item) => item.url as string))
 
         setPromotedResources((current) => {
           // Keep local-only items (blob: URLs or not yet uploaded)
           const localOnly = current.filter((item) => !item.audioUrl?.startsWith('https://'))
-          // Keep https:// items still present in Blob (prune deleted ones)
-          const stillInBlob = current.filter((item) => item.audioUrl?.startsWith('https://') && blobUrls.has(item.audioUrl))
-          // Add new Blob items not yet in local state
-          const localBlobUrls = new Set(current.map((item) => item.audioUrl).filter(Boolean))
-          const newFromBlob: ChunksAwareResource[] = blobItems
-            .filter((item) => typeof item.url === 'string' && !localBlobUrls.has(item.url as string))
+          // Keep https:// items still present in Storage (prune deleted ones)
+          const stillInStorage = current.filter((item) => item.audioUrl?.startsWith('https://') && cloudUrls.has(item.audioUrl))
+          // Add new Storage items not yet in local state
+          const localCloudUrls = new Set(current.map((item) => item.audioUrl).filter(Boolean))
+          const newFromCloud: ChunksAwareResource[] = cloudItems
+            .filter((item) => typeof item.url === 'string' && !localCloudUrls.has(item.url as string))
             .map((item, index) => ({
-              id: `blob-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
+              id: `firebase-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
               category: 'speech' as const,
               sourceKind: 'tts' as const,
               audioUrl: item.url as string,
               textPrompt: typeof item.textPrompt === 'string' ? item.textPrompt : undefined,
               soundPrompt: undefined,
-              label: ['blob', typeof item.language === 'string' ? item.language : 'xx'],
+              label: ['firebase-storage', typeof item.language === 'string' ? item.language : 'xx'],
               language: typeof item.language === 'string' ? item.language : undefined,
               level: typeof item.level === 'number' ? item.level as 1 | 2 | 3 : 1,
               form: typeof item.form === 'string' ? item.form as ChunksAwareResource['form'] : undefined,
               durationMs: null,
               approvalStatus: 'approved_resource' as const,
-              license: 'vercel blob',
+              license: 'firebase storage',
               provenanceUrl: '',
               attribution: '',
               provider: typeof item.provider === 'string' ? item.provider : 'tts',
               voiceId: typeof item.voiceId === 'string' ? item.voiceId : '',
               createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString().slice(0, 10),
               mseFocus: 'sound' as const,
-              resistanceTag: 'blob',
-              lessonId: 'blob-library',
+              resistanceTag: 'firebase-storage',
+              lessonId: 'firebase-storage-library',
               mirrorGoal: 'prosody' as const,
             }))
 
-          return [...localOnly, ...stillInBlob, ...newFromBlob]
+          return [...localOnly, ...stillInStorage, ...newFromCloud]
         })
       })
       .catch(() => { /* remote list unavailable, continue with local */ })
@@ -208,7 +208,7 @@ export default function App() {
     }
   }
 
-  async function uploadAudioToBlob(blob: Blob, metadata: object): Promise<string> {
+  async function uploadAudioToCloud(blob: Blob, metadata: object): Promise<string> {
     const arrayBuffer = await blob.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
     let binary = ''
@@ -349,9 +349,9 @@ export default function App() {
       setDeletedResourceIds((current) => Array.from(new Set([...current, ...deleteIds])))
     }
 
-    // Fire-and-forget Blob deletion so other devices stop seeing these items
-    const blobUrls = uniqueItems.map((item) => item.audioUrl).filter((url): url is string => typeof url === 'string' && url.startsWith('https://'))
-    for (const url of blobUrls) {
+    // Fire-and-forget Firebase Storage deletion so other devices stop seeing these items
+    const cloudUrls = uniqueItems.map((item) => item.audioUrl).filter((url): url is string => typeof url === 'string' && url.startsWith('https://'))
+    for (const url of cloudUrls) {
       fetch('/api/delete-audio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) }).catch(() => {})
     }
 
@@ -490,7 +490,7 @@ export default function App() {
         const blob = await generateSpeech({ model, input: prepared.textPrompt })
         let audioUrl: string
         try {
-          audioUrl = await uploadAudioToBlob(blob, {
+          audioUrl = await uploadAudioToCloud(blob, {
             textPrompt: prepared.textPrompt,
             language: prepared.language,
             level: prepared.level,
@@ -532,7 +532,7 @@ export default function App() {
     setBatchProgress({ current: preparedTexts.length, total: preparedTexts.length, message: `Done — ${ok}/${preparedTexts.length} generated` })
 
     if (ok > 0) {
-      // Drain staged → promoted directly. URLs are already https:// from uploadAudioToBlob in the loop.
+      // Drain staged → promoted directly. URLs are already https:// from uploadAudioToCloud in the loop.
       // No async conversion needed — avoids race conditions and localStorage quota issues.
       setStaged((latestStaged) => {
         if (latestStaged.length === 0) return latestStaged
@@ -552,7 +552,7 @@ export default function App() {
           return merged.filter((item, idx, arr) => idx === arr.findIndex((e) => e.id === item.id))
         })
         setBatchProgress(null)
-        setLog(`✓ ${promoted.length} clips synced to cloud.`)
+        setLog(`✓ ${promoted.length} clips synced to Firebase Storage.`)
         return []
       })
     }
@@ -561,15 +561,15 @@ export default function App() {
   const importAllStaged = () => promoteStagedItems(staged.map((item) => ({ ...item, _staged: true })))
 
   async function syncToCloud() {
-    // Find all local resources that are NOT already on Vercel Blob (https://)
+    // Find all local resources that are NOT already synced to Firebase Storage (https://)
     const localItems = promotedResources.filter(
       (item) => item.audioUrl && !item.audioUrl.startsWith('https://')
     )
     if (localItems.length === 0) {
-      setLog('All resources already synced to cloud.')
+      setLog('All resources already synced to Firebase Storage.')
       return
     }
-    if (!window.confirm(`Upload ${localItems.length} local audio files to cloud?\nThis may take a while.`)) return
+    if (!window.confirm(`Upload ${localItems.length} local audio files to Firebase Storage?\nThis may take a while.`)) return
 
     setSyncProgress({ current: 0, total: localItems.length })
     let ok = 0
@@ -581,7 +581,7 @@ export default function App() {
       try {
         // Convert data URL or blob URL to Blob
         const audioBlob = await fetch(item.audioUrl!).then((r) => r.blob())
-        const cloudUrl = await uploadAudioToBlob(audioBlob, {
+        const cloudUrl = await uploadAudioToCloud(audioBlob, {
           textPrompt: item.textPrompt,
           language: item.language,
           level: item.level,
@@ -606,7 +606,7 @@ export default function App() {
       )
     }
     setSyncProgress(null)
-    setLog(`✓ ${ok}/${localItems.length} files synced to cloud.`)
+    setLog(`✓ ${ok}/${localItems.length} files synced to Firebase Storage.`)
   }
 
   return (

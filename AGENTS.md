@@ -36,9 +36,9 @@ If two files disagree: **canonical project state wins** (PRD/architecture/decisi
 
 - React + Vite + TypeScript · Tailwind CSS
 - Web Audio API + MediaRecorder for playback/capture
-- Local-first data behind a `StorageAdapter` (JSON + `public/resources/audio/...`)
+- Local-first seed data behind a `StorageAdapter` (JSON + `public/resources/audio/...`), plus Firebase Functions → Cloud Storage for cross-device generated audio
 - **9router** for TTS via **same-origin `/api/*` proxy** — `NINEROUTER_KEY` never reaches the browser
-- Firebase Hosting (preview-first); production gated by Release Control
+- Firebase Hosting at `chunks-mirror.web.app` (preview-first); production gated by Release Control
 
 ## File placement rules
 
@@ -52,8 +52,8 @@ src/features/mirror/    Learner Loop Surface (one-button room)
 src/features/resources/ Resource Bank Surface
 src/features/settings/  Dynamic Settings
 src/ui/                 design-system primitives (tokens, Button, etc.)
-api/                    same-origin proxy handlers (9router, text-to-sound)
-public/resources/audio/ pre-generated + imported audio assets
+functions/              Firebase Functions same-origin API (`/api/*`) for 9router + audio storage
+public/resources/audio/ seed/pre-generated local audio assets
 src/data/resources.json local Resource Bank manifest
 ```
 

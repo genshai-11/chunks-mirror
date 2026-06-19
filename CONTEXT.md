@@ -55,7 +55,7 @@ G / Generate  →  O / Original Playback  →  C / Copy Capture  →  Mirror Sco
 - **User Import** — learner/admin uploads their own audio; trimmed/normalized; always-available fallback when generation is impossible.
 - **Resource Approval Status** — lifecycle gate: `candidate → license_checked → approved_resource`. Only **Approved Resources** appear in real learner practice.
 - **Chunks-Aware Resource** — a bank entry storing audio metadata + license/provenance + Chunks training intent (MSE focus, category, language, level, mirror goal). See schema below.
-- **Storage Adapter** — boundary to read/write resources/recordings/scores; local JSON first, swappable to Firebase/Supabase later.
+- **Storage Adapter** — boundary to read/write resources/recordings/scores; local JSON seed first, Firebase Functions + Cloud Storage for cross-device generated audio, swappable to Firebase Storage/Supabase later.
 
 ### Mirror Room / UX terms
 - **One-Button Mode** — default interface: one primary action runs the whole loop. *Avoid:* multi-panel control room.
@@ -70,9 +70,9 @@ G / Generate  →  O / Original Playback  →  C / Copy Capture  →  Mirror Sco
 - **Resource Bank Surface** — inspect, preview, filter, generate, import, approve resources.
 
 ### Delivery / ops terms
-- **Chunks App Pattern** — React/Vite + TypeScript UI, local-first data in MVP, Firebase Hosting target, same-origin `/api/*` proxy for secret-bearing provider calls.
+- **Chunks App Pattern** — React/Vite + TypeScript UI, local-first seed data, Firebase Hosting target, Firebase Functions same-origin `/api/*` proxy for secret-bearing provider calls and generated audio persistence.
 - **Same-Origin Provider Proxy** — `/api/*` backend that calls 9router/text-to-sound without exposing `NINEROUTER_KEY` or hitting CORS/mixed-content.
-- **Firebase Preview-Ready** — first delivery target: builds locally + has Hosting preview structure; production waits for loop/resource validation.
+- **Firebase Preview-Ready** — first delivery target: builds locally + targets `chunks-mirror.web.app`; production waits for loop/resource validation.
 - **Release Control** — commit/tag before deploy, preview/canary validation, rollback notes, restore-path verification for Hosting/Functions.
 
 ## Chunks-Aware Resource schema

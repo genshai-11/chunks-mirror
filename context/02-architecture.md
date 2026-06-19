@@ -17,9 +17,9 @@ Direction "A, go" confirmed 2026-06-16 (adopt + refresh existing `chunks-mirror`
 | Audio out | Web Audio API / `<audio>` | Precise timing for O + countdown |
 | Audio in | MediaRecorder API | Capture Copy Signal during C |
 | State | local `useState`/`useReducer`; small store for Room | One-button loop is local; no heavy global state |
-| Data | local JSON manifest + `public/resources/audio` behind `StorageAdapter` | Local-first MVP, cloud-swappable |
+| Data | local JSON seed manifest + `public/resources/audio`, plus Firebase Functions → Cloud Storage for generated audio | Local seed remains, cross-device cloud persistence enabled |
 | Providers | **9router** TTS + Text-to-Sound, via `/api/*` proxy | Multi-provider, multilingual, key stays server-side |
-| Hosting | Firebase Hosting (preview-first) | Lucy's deploy target; Functions host the proxy in prod |
+| Hosting | Firebase Hosting site `chunks-mirror` → `https://chunks-mirror.web.app` (preview-first) | Lucy's deploy target; Functions host `/api/*` in prod |
 
 Alternatives considered and rejected for v1: Next.js (heavier than the one-button loop needs); direct browser→provider calls (leaks `NINEROUTER_KEY`, CORS/mixed-content); cloud DB from day one (premature before the loop is proven).
 
@@ -47,7 +47,7 @@ src/features/
 
 src/ui/                tokens + primitives (Button, Tabs, Pill, Countdown)
 
-api/                   same-origin proxy (dev: Vite middleware; prod: Firebase Functions)
+functions/             Firebase Functions same-origin API (`/api/*`: 9router proxy + Cloud Storage audio handlers)
   tts.ts               POST -> $NINEROUTER_URL/v1/audio/speech
   sound.ts             POST -> text-to-sound provider
 ```
@@ -92,18 +92,18 @@ graph LR
 - `model` = voice id: `edge-tts/<locale-voice>` (free), `el/eleven_multilingual_v2` (premium), `openai/...`, `google/<lang>`.
 - `response_format=mp3` (bytes) or `json` (`{audio: base64, format}`).
 - Discovery: `GET /v1/models/tts`, `GET /v1/audio/voices?provider=edge-tts&lang=<code>`.
-- **All calls server-side** through `api/tts.ts`. Browser never sees the key.
+- **All calls server-side** through Firebase Functions `/api/tts`. Browser never sees the key.
 
 ## Security & secrets
 
-`.env.local` (gitignored): `NINEROUTER_URL`, `NINEROUTER_KEY`. Browser calls `/api/tts` only. Firebase Functions hold the key in prod config.
+`.env.local` (gitignored): `NINEROUTER_URL`, `NINEROUTER_KEY`. Browser calls `/api/*` only. Firebase Functions hold the key in Secret Manager (`NINEROUTER_KEY`) and use the project audio bucket `chunks-mirror-audio-284566312743`.
 
 ## Data shape
 
-Single source: `ChunksAwareResource` (see `CONTEXT.md` schema). Manifest `src/data/resources.json`; audio under `public/resources/audio/{category}/`. Recordings are in-memory `Blob`s unless explicitly exported.
+Single source shape: `ChunksAwareResource` (see `CONTEXT.md` schema). Seed manifest `src/data/resources.json`; seed audio under `public/resources/audio/{category}/`. Generated/imported cloud audio is stored by Firebase Functions under `gs://chunks-mirror-audio-284566312743/audio/` with `.meta.json` sidecars.
 
 ## Open / R&D
 
 - **Music Snippet generation** — no committed provider; import-first. → R&D task.
 - **Acoustic scoring v0** — algorithm (duration + energy envelope + spectral) deferred to v2. → R&D task.
-- **Cloud storage adapter** (Firebase/Supabase) — interface ready; implementation later.
+- **Firebase Storage native bucket** — optional later migration from the project Cloud Storage bucket if Firebase managed Storage is enabled in console.

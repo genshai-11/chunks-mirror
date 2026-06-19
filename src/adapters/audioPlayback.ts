@@ -36,7 +36,9 @@ export class BrowserAudioPlaybackAdapter implements AudioPlaybackAdapter {
       try {
         this.audio.pause()
         this.audio.currentTime = 0
-      } catch {}
+      } catch {
+        // Ignore cleanup failures when the browser has already released the audio element.
+      }
       this.audio = null
     }
   }

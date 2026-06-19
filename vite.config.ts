@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineConfig, loadEnv, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -133,7 +134,7 @@ export default defineConfig(({ mode }) => {
   if (!env.NINEROUTER_URL) {
     // eslint-disable-next-line no-console
     console.warn('[chunks] NINEROUTER_URL not set in .env.local — /api/tts will fail until provided.')
-  } // eslint-disable-line @typescript-eslint/no-explicit-any -- vite middleware req/res are intentionally loose here
+  }
 
   return {
     plugins: [react(), apiProxyPlugin()],

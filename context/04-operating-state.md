@@ -16,7 +16,7 @@ Snapshot of where the project actually is. Canonical task state is Hermes (when 
 | P2 Mirror Loop engine | done | `BrowserAudioPlaybackAdapter`, `BrowserMicRecordingAdapter`, `MirrorLoopController` (full state machine), timing from settings, auto/manual, ending cue, `MirrorAttempt` emission (score off). |
 | P3 Mirror Room UI | done | Real `MirrorPage` with one primary button + live phase + SVG `CountdownRing` + recording indicator + auto/manual + stop/next. `SettingsBar` + Swiss tokens. |
 | P4 Sound Engine | active | **Library expanded** (Sentence Forms short/long, 24 langs target, multi-model: edge-tts / el/eleven_multilingual_v2 / google-tts / deepgram + custom). `/api/tts` + new `/api/generate-text` proxies. On-demand + **two-phase batch (real lucy text gen → review/delete prepared → TTS batch)** + import flow + Resource Bank surface (list/filter/preview/generate/import demo with form column). |
-| P5 Firebase preview | pending | gated |
+| P5 Firebase preview | in progress | Hosting site `chunks-mirror.web.app` reserved; repo points to `chunks-voicecloning-genshai`; `/api/*` moved to Firebase Functions; audio bucket `chunks-mirror-audio-284566312743` created. Production deploy still gated. |
 
 ## Hermes board
 
@@ -32,7 +32,7 @@ Snapshot of where the project actually is. Canonical task state is Hermes (when 
 
 **Derived from checked acceptance items in `01-prd.md` + `03-build-plan.md`.**
 Multiple items now satisfied with evidence after scaffold + library expansion + real lucy batch:
-- Vite/React/TS + Tailwind + folders + Firebase preview config (Phase 0).
+- Vite/React/TS + Tailwind + folders + Firebase Hosting target `chunks-mirror.web.app` + Functions `/api/*` config.
 - Domain types + StorageAdapter + selection (incl. form filter) + sample bank.
 - Dynamic Settings filters (Category + Language + Level + **Sentence Form**) change the pool.
 - 9router TTS library generation (≥20 langs + multiple forms + multi-model support) + on-demand proxy path.

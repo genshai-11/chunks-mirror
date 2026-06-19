@@ -47,7 +47,7 @@ That slice is the **first visible win**. Everything else feeds it.
 
 ### Phase 5 — Firebase preview readiness
 - [x] Local build passes. (`npm run build` clean)
-- [ ] Move `/api/*` to Firebase Functions for prod; key in Functions config. (see context/06-runbook.md)
+- [x] Move `/api/*` to Firebase Functions for prod; key in Secret Manager. Hosting target reserved as `chunks-mirror.web.app`. (see context/06-runbook.md)
 - [ ] Document preview deploy + rollback/restore. No production deploy in v1. (gated)
 
 ## Verification commands
@@ -56,7 +56,7 @@ That slice is the **first visible win**. Everything else feeds it.
 npm run dev          # local app
 npm run build        # production build must pass
 npm run lint
-firebase hosting:channel:deploy preview   # preview only (gated)
+firebase hosting:channel:deploy preview --only hosting:chunks-mirror,functions   # preview only (gated)
 ```
 
 ## Release gates
