@@ -102,6 +102,33 @@ body {
 .wave-bar-4 { animation-delay: 330ms; }
 .wave-bar-5 { animation-delay: 440ms; }
 
+.settings-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 72%, transparent) color-mix(in srgb, var(--line-strong) 72%, transparent);
+}
+
+.settings-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.settings-scrollbar::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--line-strong) 48%, transparent);
+  border-left: 1px solid var(--line);
+}
+
+.settings-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 78%, var(--fg-muted));
+  background-clip: content-box;
+}
+
+.settings-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: content-box;
+}
+
 button,
 input,
 select,

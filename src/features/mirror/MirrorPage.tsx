@@ -319,7 +319,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
         </div>
 
         {/* Own scroll area — independent of the page */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="settings-scrollbar flex-1 overflow-y-scroll overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 pr-4">
           <div className="flex flex-col gap-2">
 
             {/* Mode */}
