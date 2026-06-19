@@ -60,11 +60,16 @@ G / Generate  →  O / Original Playback  →  C / Copy Capture  →  Mirror Sco
 ### Mirror Room / UX terms
 - **One-Button Mode** — default interface: one primary action runs the whole loop. *Avoid:* multi-panel control room.
 - **Auto-Run Loop** — one tap runs G → O → C (→ Score) without phase-by-phase taps.
-- **Interaction Mode** — `auto` (room auto-advances) vs `manual` (leader taps to advance to the next item).
+- **Interaction Mode** — how the room advances and gates. Four presets:
+  - `auto` — one tap runs G→O→C and auto-advances to the next item.
+  - `manual` — auto-runs each item, then waits for a tap (Next) between items.
+  - `offline` — self-paced: after O the room waits for a tap before recording C ("tap when ready to mirror"), and waits for a tap between items. Gates are configurable.
+  - `custom` — fully dynamic: every flow gate (auto-advance, pause-before-mirror) and every ending sound is independently toggleable.
+- **Flow Gates** — dynamic flow controls surfaced by `offline`/`custom`: `autoAdvance` (roll into next item vs wait) and `gateBeforeCopy` (wait for a tap before C / Copy Capture).
 - **Timing Contract** — defaults O=3s, C=3s; overridable per resource/level and editable in Settings.
 - **Countdown Window** — visible timer protecting the rhythm of O and C (counts down to 0).
-- **Ending-Sound Cue** — optional short audio marker played after O finishes and before C starts, to signal the C window.
-- **Dynamic Settings** — Room setup surface: interaction mode, G/C timing, category + language + level filters, random mix, ending cue.
+- **Ending-Sound Cue** — optional short audio markers at loop boundaries: `cueOnListen` (G→O), `cueOnMirror` (O→C, the classic "now mirror" signal), `cueOnEnd` (C→next). `auto`/`manual` expose only the O→C cue; `offline`/`custom` expose all three.
+- **Dynamic Settings** — Collapsible Room setup surface (each section hides/expands): interaction mode, flow gates, ending sounds, G/C timing, playback speed, category + language + level + form filters, random mix. Has its own scroll, independent of the page.
 - **Random Mix** — play approved resources in random order, ignoring library/lesson order.
 - **Learner Loop Surface** — the one-button Mirror screen.
 - **Resource Bank Surface** — inspect, preview, filter, generate, import, approve resources.
@@ -104,7 +109,7 @@ mirrorGoal                       # rhythm | pitch | energy | timing | prosody
 - **G / Generate** selects an **Approved Resource** from the **Resource Bank** before O begins. It does **not** call providers inside the loop.
 - A **Source Signal** is a **Speech Source** or a **Sound Source**; its **Sound Category** classifies it.
 - A **Speech Source** has a `language` from the **Language Set**; the same text may be generated across many languages.
-- **Dynamic Settings** filter the playable pool by category + language + level + form (short/long sentence), and choose `auto|manual` + timing + random mix + ending cue.
+- **Dynamic Settings** filter the playable pool by category + language + level + form (short/long sentence), and choose interaction mode (`auto|manual|offline|custom`) + flow gates + timing + speed + random mix + per-boundary ending sounds.
 - A **Curated Sound Import** / **User Import** must carry license/provenance before becoming an Approved Resource.
 - **Resource Approval Status** follows `candidate → license_checked → approved_resource`; only Approved Resources reach learner practice.
 

@@ -42,7 +42,11 @@ const DEFAULT_SETTINGS: RoomSettings = {
   level: '',
   sentenceForm: 'all',
   randomMix: false,
-  endingCue: true,
+  autoAdvance: true,
+  gateBeforeCopy: false,
+  cueOnListen: false,
+  cueOnMirror: true,
+  cueOnEnd: false,
 }
 
 const ALL_LANGS = ['vi', 'en', 'fr', 'zh', 'ja', 'ko', 'es', 'de', 'it', 'pt', 'ru', 'ar', 'hi', 'th', 'id', 'nl', 'tr', 'pl', 'sv', 'el', 'uk', 'ro', 'cs', 'fil']

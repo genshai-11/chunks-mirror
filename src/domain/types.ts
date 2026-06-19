@@ -49,7 +49,11 @@ export interface ChunksAwareResource {
   mirrorGoal?: MirrorGoal
 }
 
-export type InteractionMode = 'auto' | 'manual'
+// auto    — one tap runs G→O→C and auto-advances to the next item
+// manual  — auto-runs each item, pauses between items (tap Next)
+// offline  — self-paced: tap when ready to record C, tap to advance (gates are configurable)
+// custom  — fully dynamic: every gate + cue boundary is user-toggleable
+export type InteractionMode = 'auto' | 'manual' | 'offline' | 'custom'
 
 export interface RoomSettings {
   mode: InteractionMode
@@ -61,10 +65,28 @@ export interface RoomSettings {
   level?: number | ''
   sentenceForm?: 'all' | SentenceForm
   randomMix: boolean
-  endingCue: boolean
+
+  // ── Dynamic flow controls (driven by mode preset; editable in offline/custom) ──
+  // true  → loop auto-advances to the next item after C
+  // false → loop waits for a tap between items
+  autoAdvance: boolean
+  // true  → after O (and its cue) the loop waits for a tap before recording C
+  gateBeforeCopy: boolean
+
+  // ── Per-boundary ending sounds ──
+  cueOnListen: boolean // play a cue when G ends / O is about to start ("listen")
+  cueOnMirror: boolean // play a cue when O ends / C is about to start ("mirror") — classic ending cue
+  cueOnEnd: boolean    // play a cue when C ends ("done", separates items)
 }
 
-export type LoopPhase = 'idle' | 'preparing' | 'playingOriginal' | 'recordingCopy' | 'betweenItems' | 'waitingNext'
+export type LoopPhase =
+  | 'idle'
+  | 'preparing'
+  | 'playingOriginal'
+  | 'recordingCopy'
+  | 'awaitingCopy'
+  | 'betweenItems'
+  | 'waitingNext'
 
 export interface MirrorAttempt {
   resourceId: string

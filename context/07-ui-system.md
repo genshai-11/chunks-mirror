@@ -72,7 +72,8 @@ The product visual language. Read before any UI work; reuse tokens/components; u
 | `Pill` (filter chip) | `src/ui/Pill.tsx` | planned |
 | `CountdownRing` | `src/ui/CountdownRing.tsx` | planned |
 | `MirrorButton` | `src/features/mirror/MirrorButton.tsx` | planned |
-| `SettingsBar` | `src/features/settings/SettingsBar.tsx` | implemented — premium control deck with mode/timing/filter/form/flow grouping |
+| `SettingsBar` | `src/features/settings/SettingsBar.tsx` | implemented — Library-page control deck; 4 interaction modes (auto/manual/offline/custom), per-mode hint, flow gates + per-boundary cue toggles surfaced for dynamic modes |
+| `Accordion` (collapsible setup section) | inline in `src/features/mirror/MirrorPage.tsx` | implemented — hide/expand section with chevron; used for the Mirror Room Dynamic Settings sidebar (Mode, Flow, Ending sounds, Timing, Speed, Filters, Mix) |
 | `ResourceTable` | `src/features/resources/ResourceTable.tsx` | planned |
 | `LibraryPanel` | `src/features/resources/LibraryPanel.tsx` | implemented — flat visible admin library view with staged-to-library import, search, filters, bulk select/delete |
 
