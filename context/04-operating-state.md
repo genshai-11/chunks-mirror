@@ -27,8 +27,8 @@ Snapshot of where the project actually is. Canonical task state is Hermes (when 
 - Stack confirmation at build-plan gate (Candidate → Accepted).
 - `NINEROUTER_URL` / `NINEROUTER_KEY` values needed before live TTS generation (placeholders in `.env.local.example`).
 - Music Snippet generation + acoustic scoring are R&D (deferred).
-- **ERE Topic 5 upload paused by Lucy at 2026-06-20 16:43 GMT+7.** Current bucket count before pause: **31/105 mp3** and **31/105 `.meta.json`** under `audio/ere/topic-05/en/`. Pending task: resume idempotent importer later to finish remaining 74 clips after Functions work is validated/deployed.
-- ERE evaluation Functions endpoint is implemented locally and syntax-checked, but not yet preview/prod deployed.
+- **ERE Topic 5 upload paused by Lucy at 2026-06-20 16:43 GMT+7.** Current bucket count after Functions deploy validation: **31/105 mp3** and **31/105 `.meta.json`** under `audio/ere/topic-05/en/`. Pending task: resume idempotent importer later to finish remaining 74 clips after Functions work is validated.
+- ERE evaluation Functions endpoint `/api/ere/evaluate-attempt` is deployed in Firebase Functions (functions-only deploy, no Hosting deploy) from tag `ere-functions-20260620-1643`. Evidence: `/api/health` returned OK and invalid ERE evaluation payload returned HTTP 400 on 2026-06-20 16:47 GMT+7.
 
 ## Progress
 
