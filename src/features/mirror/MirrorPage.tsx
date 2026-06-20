@@ -144,8 +144,17 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
     else ctrl.stop()
   }
 
+  const applySettingsChange = (next: RoomSettings) => {
+    onSettingsChange(next)
+
+    if (phase !== 'idle') {
+      controllerRef.current?.stop()
+      showLog('Settings changed — loop paused. Press play to reload.')
+    }
+  }
+
   const set = <K extends keyof RoomSettings>(key: K, val: RoomSettings[K]) =>
-    onSettingsChange({ ...settings, [key]: val })
+    applySettingsChange({ ...settings, [key]: val })
 
   const isListening = phase === 'playingOriginal'
   const isRecording = phase === 'recordingCopy'
@@ -165,7 +174,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const dynamic = modeIsDynamic(settings.mode)
 
   return (
-    <main className="flex min-h-[100dvh] bg-[--bg] text-[--fg]">
+    <main className="flex min-h-[100dvh] overflow-x-hidden bg-[--bg] text-[--fg]">
       {/* ─── Training area ──────────────────────────────────────── */}
       <div className="relative flex flex-1 flex-col items-center justify-center gap-8 px-5 py-20 sm:gap-10 sm:px-6 sm:py-16">
 
@@ -296,7 +305,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
 
       <aside
         className={[
-          'fixed inset-y-0 right-0 z-20 flex w-[86vw] max-w-[340px] flex-col border-l border-[--line] bg-[--bg-elev] transition-transform duration-200 sm:w-[300px] lg:w-[280px]',
+          'fixed inset-y-0 right-0 z-20 flex max-h-[100dvh] min-h-0 w-[86vw] max-w-[340px] flex-col border-l border-[--line] bg-[--bg-elev] transition-transform duration-200 sm:w-[300px] lg:w-[280px]',
           panelOpen ? 'translate-x-0 lg:relative lg:inset-auto lg:translate-x-0' : 'translate-x-full lg:translate-x-full lg:w-0 lg:border-l-0',
         ].join(' ')}
       >
@@ -319,7 +328,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
         </div>
 
         {/* Own scroll area — independent of the page */}
-        <div className="settings-scrollbar flex-1 overflow-y-scroll overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 pr-4">
+        <div className="settings-scrollbar min-h-0 flex-1 overflow-y-scroll overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 pr-4">
           <div className="flex flex-col gap-2">
 
             {/* Mode */}
@@ -329,7 +338,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   <button
                     key={m}
                     type="button"
-                    onClick={() => onSettingsChange(applyMode(settings, m))}
+                    onClick={() => applySettingsChange(applyMode(settings, m))}
                     className={`rounded-[7px] border py-2 font-mono text-[9px] uppercase tracking-[0.14em] transition-colors ${
                       settings.mode === m
                         ? 'border-[--accent] bg-[--accent] text-white'

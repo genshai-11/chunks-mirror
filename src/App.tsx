@@ -75,6 +75,26 @@ function getLibraryItemKey(item: LibraryItemLike & { _staged?: boolean }) {
   return item.id || item.audioUrl || `${item.category || 'other'}-${item.language || 'xx'}-${item.textPrompt || item.soundPrompt || 'item'}`
 }
 
+function isResourceCategory(value: unknown): value is ChunksAwareResource['category'] {
+  return typeof value === 'string' && ['speech', 'music_snippet', 'sfx_animal', 'sfx_object', 'sfx_nature', 'sfx_human', 'other'].includes(value)
+}
+
+function isSourceKind(value: unknown): value is ChunksAwareResource['sourceKind'] {
+  return typeof value === 'string' && ['tts', 'text_to_sound', 'imported'].includes(value)
+}
+
+function isMseFocus(value: unknown): value is ChunksAwareResource['mseFocus'] {
+  return typeof value === 'string' && ['sound', 'motion', 'emotion', 'mixed'].includes(value)
+}
+
+function isMirrorGoal(value: unknown): value is NonNullable<ChunksAwareResource['mirrorGoal']> {
+  return typeof value === 'string' && ['rhythm', 'pitch', 'energy', 'timing', 'prosody'].includes(value)
+}
+
+function stringArrayOrDefault(value: unknown, fallback: string[]) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? value : fallback
+}
+
 export default function App() {
   const [settings, setSettings] = useState<RoomSettings>(DEFAULT_SETTINGS)
   const [resources, setResources] = useState<ChunksAwareResource[]>([])
@@ -148,43 +168,45 @@ export default function App() {
       .then((r) => r.ok ? r.json() : Promise.reject(new Error(`list-audio ${r.status}`)))
       .then((data: { items: Array<Record<string, unknown>> }) => {
         const cloudItems = Array.isArray(data.items) ? data.items : []
-        const cloudUrls = new Set(cloudItems.map((item) => item.url as string))
 
         setPromotedResources((current) => {
-          // Keep local-only items (blob: URLs or not yet uploaded)
+          // Keep local-only items (blob: URLs or not yet uploaded).
           const localOnly = current.filter((item) => !item.audioUrl?.startsWith('https://'))
-          // Keep https:// items still present in Storage (prune deleted ones)
-          const stillInStorage = current.filter((item) => item.audioUrl?.startsWith('https://') && cloudUrls.has(item.audioUrl))
-          // Add new Storage items not yet in local state
-          const localCloudUrls = new Set(current.map((item) => item.audioUrl).filter(Boolean))
-          const newFromCloud: ChunksAwareResource[] = cloudItems
-            .filter((item) => typeof item.url === 'string' && !localCloudUrls.has(item.url as string))
-            .map((item, index) => ({
-              id: `firebase-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
-              category: 'speech' as const,
-              sourceKind: 'tts' as const,
-              audioUrl: item.url as string,
-              textPrompt: typeof item.textPrompt === 'string' ? item.textPrompt : undefined,
-              soundPrompt: undefined,
-              label: ['firebase-storage', typeof item.language === 'string' ? item.language : 'xx'],
-              language: typeof item.language === 'string' ? item.language : undefined,
-              level: typeof item.level === 'number' ? item.level as 1 | 2 | 3 : 1,
-              form: typeof item.form === 'string' ? item.form as ChunksAwareResource['form'] : undefined,
-              durationMs: null,
-              approvalStatus: 'approved_resource' as const,
-              license: 'firebase storage',
-              provenanceUrl: '',
-              attribution: '',
-              provider: typeof item.provider === 'string' ? item.provider : 'tts',
-              voiceId: typeof item.voiceId === 'string' ? item.voiceId : '',
-              createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString().slice(0, 10),
-              mseFocus: 'sound' as const,
-              resistanceTag: 'firebase-storage',
-              lessonId: 'firebase-storage-library',
-              mirrorGoal: 'prosody' as const,
-            }))
+          const currentByUrl = new Map(current.map((item) => [item.audioUrl, item]))
 
-          return [...localOnly, ...stillInStorage, ...newFromCloud]
+          // Firebase Storage is the source of truth for https:// items. Rebuild all
+          // cloud entries from fresh metadata so category/sourceKind fixes apply after reload.
+          const fromCloud: ChunksAwareResource[] = cloudItems
+            .filter((item) => typeof item.url === 'string')
+            .map((item, index) => {
+              const currentItem = currentByUrl.get(item.url as string)
+              return {
+                id: currentItem?.id || `firebase-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
+                category: isResourceCategory(item.category) ? item.category : 'speech',
+                sourceKind: isSourceKind(item.sourceKind) ? item.sourceKind : 'tts',
+                audioUrl: item.url as string,
+                textPrompt: typeof item.textPrompt === 'string' ? item.textPrompt : undefined,
+                soundPrompt: typeof item.soundPrompt === 'string' ? item.soundPrompt : undefined,
+                label: stringArrayOrDefault(item.label, ['firebase-storage', typeof item.language === 'string' ? item.language : 'xx']),
+                language: typeof item.language === 'string' ? item.language : undefined,
+                level: typeof item.level === 'number' ? item.level as 1 | 2 | 3 : 1,
+                form: typeof item.form === 'string' ? item.form as ChunksAwareResource['form'] : undefined,
+                durationMs: typeof item.durationMs === 'number' ? item.durationMs : null,
+                approvalStatus: 'approved_resource' as const,
+                license: typeof item.license === 'string' ? item.license : 'firebase storage',
+                provenanceUrl: typeof item.provenanceUrl === 'string' ? item.provenanceUrl : '',
+                attribution: typeof item.attribution === 'string' ? item.attribution : '',
+                provider: typeof item.provider === 'string' ? item.provider : 'firebase-storage',
+                voiceId: typeof item.voiceId === 'string' ? item.voiceId : '',
+                createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString().slice(0, 10),
+                mseFocus: isMseFocus(item.mseFocus) ? item.mseFocus : 'sound',
+                resistanceTag: typeof item.resistanceTag === 'string' ? item.resistanceTag : 'firebase-storage',
+                lessonId: typeof item.lessonId === 'string' ? item.lessonId : 'firebase-storage-library',
+                mirrorGoal: isMirrorGoal(item.mirrorGoal) ? item.mirrorGoal : 'prosody',
+              }
+            })
+
+          return [...localOnly, ...fromCloud]
         })
       })
       .catch(() => { /* remote list unavailable, continue with local */ })
@@ -780,7 +802,7 @@ export default function App() {
                     </div>
                   </div>
                   {availableModels.length > 0 && (
-                    <div className="max-h-48 space-y-1 overflow-y-auto">
+                    <div className="app-scrollbar max-h-48 space-y-1 overflow-y-auto pr-2">
                       {availableModels.map((m) => {
                         const active = selectedModels.includes(m.id)
                         return (
@@ -840,7 +862,7 @@ export default function App() {
                     <button onClick={() => deletePreparedTexts(preparedSelection)} disabled={preparedSelection.length === 0} className="rounded-[999px] bg-[--accent] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-white disabled:opacity-30">Remove selected</button>
                   </div>
                 </div>
-                <div className="mt-4 max-h-72 overflow-auto rounded-[18px] border border-[--line] bg-[--bg]">
+                <div className="app-scrollbar mt-4 max-h-72 overflow-auto rounded-[18px] border border-[--line] bg-[--bg]">
                   {preparedTexts.map((item) => {
                     const selected = preparedSelectedSet.has(item.tempId)
                     return (

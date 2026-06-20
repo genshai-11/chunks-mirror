@@ -1,10 +1,10 @@
 # 04 — Operating State · Chunks Mirror (Sound)
 
-Snapshot of where the project actually is. Canonical task state is Hermes (when seeded); this mirrors it. Last update: 2026-06-16 (real 9router lucy prepared texts flow).
+Snapshot of where the project actually is. Canonical task state is Hermes (when seeded); this mirrors it. Last update: 2026-06-20 (settings reload pause, animal SFX cloud import, mobile/web scrolling polish).
 
 ## Current phase
 
-**Scaffold complete (P0 done) + library expanded + early Resource Bank + Dynamic Settings (incl. new Sentence Form) + /api/tts proxy.** Stack accepted ("A, go"). Next: full Mirror Loop controller (P2) + polish on Bank surface + preview deploy.
+**Firebase production live + 4-mode Mirror Room + Resource Bank cloud persistence.** Current focus: polish loop behavior, mobile/web scrolling, and imported SFX bank quality.
 
 ## Board snapshot
 
@@ -14,9 +14,9 @@ Snapshot of where the project actually is. Canonical task state is Hermes (when 
 | P0 Scaffold | done | Vite + React + TS + Tailwind + firebase.json + .firebaserc + full folder skeleton + /api/tts proxy. Build passes. |
 | P1 Domain + data | done | types (incl. `form` / `sentenceForm`), `selection.ts` (form-aware), `approval.ts`, `StorageAdapter` + `LocalJsonStorageAdapter`. resources.json + library (now with forms + multi-model). |
 | P2 Mirror Loop engine | done | `BrowserAudioPlaybackAdapter`, `BrowserMicRecordingAdapter`, `MirrorLoopController` (full state machine incl. `awaitingCopy` self-paced gate + `beginCopy()`), timing from settings, **4 modes** (auto/manual/offline/custom) via flow gates `autoAdvance`+`gateBeforeCopy`, **per-boundary cues** (cueOnListen/cueOnMirror/cueOnEnd), `MirrorAttempt` emission (score off). See ADR-0013. |
-| P3 Mirror Room UI | done | Real `MirrorPage` with one primary button + live phase + SVG countdown + recording/awaiting indicator + 4-mode selector + stop/next/beginCopy. **Collapsible Dynamic Settings sidebar** (own scroll, accordion sections, mobile-tuned, controller reads live settings via refs so mid-session toggles don't reset). `SettingsBar` (4 modes + dynamic gate/cue toggles) + Swiss tokens. |
-| P4 Sound Engine | active | **Library expanded** (Sentence Forms short/long, 24 langs target, multi-model: edge-tts / el/eleven_multilingual_v2 / google-tts / deepgram + custom). `/api/tts` + new `/api/generate-text` proxies. On-demand + **two-phase batch (real lucy text gen → review/delete prepared → TTS batch)** + import flow + Resource Bank surface (list/filter/preview/generate/import demo with form column). |
-| P5 Firebase preview | in progress | Hosting site `chunks-mirror.web.app` reserved; repo points to `chunks-voicecloning-genshai`; `/api/*` moved to Firebase Functions; audio bucket `chunks-mirror-audio-284566312743` created. Production deploy still gated. |
+| P3 Mirror Room UI | done | Real `MirrorPage` with one primary button + live phase + SVG countdown + recording/awaiting indicator + 4-mode selector + stop/next/beginCopy. **Collapsible Dynamic Settings sidebar** has explicit scrollbars + mobile momentum scrolling. Changing runtime settings while the loop is active pauses to idle so the next play reloads the new settings/pool. `SettingsBar` (4 modes + dynamic gate/cue toggles) + Swiss tokens. |
+| P4 Sound Engine | active | **Library expanded** (Sentence Forms short/long, 24 langs target, multi-model: edge-tts / el/eleven_multilingual_v2 / google-tts / deepgram + custom). `/api/tts` + new `/api/generate-text` proxies. On-demand + **two-phase batch (real lucy text gen → review/delete prepared → TTS batch)** + import flow + Resource Bank surface. Animal SFX folder imported to Firebase bucket as `sfx_animal` with metadata sidecars (16 clips). |
+| P5 Firebase preview/prod | live | Hosting site `chunks-mirror.web.app` live; repo points to `chunks-voicecloning-genshai`; `/api/*` moved to Firebase Functions; audio bucket `chunks-mirror-audio-284566312743` created and serving speech + animal SFX. Production deploy gated by release-control tags/preview validation. |
 
 ## Hermes board
 

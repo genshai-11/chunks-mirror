@@ -40,9 +40,11 @@
 }
 
 html {
+  min-height: 100%;
   background: var(--bg);
   font-size: 18px;
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -51,7 +53,9 @@ body {
   color: var(--fg);
   font-family: var(--sans);
   font-size: 1rem;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -webkit-overflow-scrolling: touch;
   text-rendering: optimizeLegibility;
 }
 
@@ -102,20 +106,27 @@ body {
 .wave-bar-4 { animation-delay: 330ms; }
 .wave-bar-5 { animation-delay: 440ms; }
 
+.app-scrollbar,
 .settings-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--accent) 72%, transparent) color-mix(in srgb, var(--line-strong) 72%, transparent);
 }
 
+.app-scrollbar::-webkit-scrollbar,
 .settings-scrollbar::-webkit-scrollbar {
   width: 10px;
+  height: 10px;
 }
 
+.app-scrollbar::-webkit-scrollbar-track,
 .settings-scrollbar::-webkit-scrollbar-track {
   background: color-mix(in srgb, var(--line-strong) 48%, transparent);
   border-left: 1px solid var(--line);
 }
 
+.app-scrollbar::-webkit-scrollbar-thumb,
 .settings-scrollbar::-webkit-scrollbar-thumb {
   min-height: 44px;
   border: 2px solid transparent;
@@ -124,9 +135,17 @@ body {
   background-clip: content-box;
 }
 
+.app-scrollbar::-webkit-scrollbar-thumb:hover,
 .settings-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
   background-clip: content-box;
+}
+
+@media (pointer: coarse) {
+  .app-scrollbar,
+  .settings-scrollbar {
+    scrollbar-width: auto;
+  }
 }
 
 button,
