@@ -49,6 +49,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
     typeof window !== 'undefined' && window.innerWidth >= 1024
   )
   const [ereEvaluation, setEreEvaluation] = useState<EreEvaluationState>({ status: 'idle' })
+  const [lastControlSignal, setLastControlSignal] = useState('')
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     mode: true,
     flow: true,
@@ -66,6 +67,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const micRef = useRef(new BrowserMicRecordingAdapter())
   const controllerRef = useRef<MirrorLoopController | null>(null)
   const copyPreviewUrlRef = useRef<string | null>(null)
+  const controlDebounceRef = useRef(0)
 
   // Live refs so the controller reads current settings/pool without being recreated.
   // Recreating it would reset the loop to idle — fatal for the dynamic offline/custom
@@ -163,56 +165,89 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   }, [phase])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const tag = target?.tagName?.toLowerCase()
-      if (tag === 'input' || tag === 'select' || tag === 'textarea' || target?.isContentEditable) return
+    const interactiveSelector = 'button, input, select, textarea, a, label, [contenteditable="true"]'
+
+    const isInteractiveTarget = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null
+      if (!el) return false
+      return Boolean(el.closest(interactiveSelector))
+    }
+
+    const runControl = (action: 'advance' | 'previous' | 'pause' | 'stop', signal: string, event: Event) => {
+      const now = performance.now()
+      if (now - controlDebounceRef.current < 260) return
+      controlDebounceRef.current = now
+      setLastControlSignal(signal)
 
       const ctrl = controllerRef.current
       if (!ctrl) return
 
-      const key = e.key.toLowerCase()
-      const advanceKey = e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter' || key === 'n'
-      const previousKey = e.key === 'ArrowLeft' || e.key === 'PageUp' || key === 'p' || e.key === 'Backspace'
-      const pauseKey = e.key === 'MediaPlayPause' || e.code === 'MediaPlayPause' || key === '.' || key === 'k'
+      event.preventDefault()
 
-      if (pauseKey) {
-        e.preventDefault()
+      if (action === 'stop') {
+        if (phase !== 'idle') ctrl.stop()
+        return
+      }
+
+      if (action === 'pause') {
         ctrl.togglePause()
         return
       }
 
-      if (previousKey && phase !== 'idle') {
-        e.preventDefault()
-        ctrl.previous()
+      if (action === 'previous') {
+        if (phase !== 'idle') ctrl.previous()
         return
       }
 
-      if (phase === 'idle' && advanceKey) {
-        e.preventDefault()
-        ctrl.start()
-        return
-      }
-
-      if (phase === 'awaitingCopy' && advanceKey) {
-        e.preventDefault()
-        ctrl.beginCopy()
-        return
-      }
-
-      if ((phase === 'waitingNext' || phase === 'betweenItems') && advanceKey) {
-        e.preventDefault()
-        ctrl.next()
-        return
-      }
-
-      if (e.key === 'Escape' && phase !== 'idle') {
-        e.preventDefault()
-        ctrl.stop()
-      }
+      if (phase === 'idle') ctrl.start()
+      else if (phase === 'awaitingCopy') ctrl.beginCopy()
+      else if (phase === 'waitingNext' || phase === 'betweenItems') ctrl.next()
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+
+    const onKey = (e: KeyboardEvent) => {
+      if (isInteractiveTarget(e.target)) return
+
+      const key = e.key.toLowerCase()
+      const code = e.code.toLowerCase()
+      const signal = `${e.key || 'unknown'} / ${e.code || 'unknown'}`
+      const names = new Set([key, code])
+
+      const advanceKey = [
+        'arrowright', 'pagedown', 'space', 'enter', 'numpadenter', 'n',
+        'mediatracknext', 'medianexttrack', 'browserforward', 'audiovolumeup',
+      ].some((name) => names.has(name))
+      const previousKey = [
+        'arrowleft', 'pageup', 'p', 'backspace',
+        'mediatrackprevious', 'mediaprevioustrack', 'browserback', 'audiovolumedown',
+      ].some((name) => names.has(name))
+      const pauseKey = ['mediaplaypause', '.', 'k', 'pause'].some((name) => names.has(name))
+
+      if (pauseKey) return runControl('pause', signal, e)
+      if (previousKey) return runControl('previous', signal, e)
+      if (advanceKey) return runControl('advance', signal, e)
+      if (e.key === 'Escape') return runControl('stop', signal, e)
+    }
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (isInteractiveTarget(e.target)) return
+      if (e.button === 0) runControl('advance', 'mouse-left', e)
+      if (e.button === 2) runControl('previous', 'mouse-right', e)
+    }
+
+    const onContextMenu = (e: MouseEvent) => {
+      if (!isInteractiveTarget(e.target)) e.preventDefault()
+    }
+
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('keyup', onKey, true)
+    window.addEventListener('mouseup', onMouseUp, true)
+    window.addEventListener('contextmenu', onContextMenu, true)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('keyup', onKey, true)
+      window.removeEventListener('mouseup', onMouseUp, true)
+      window.removeEventListener('contextmenu', onContextMenu, true)
+    }
   }, [phase])
 
   const handleButton = () => {
@@ -391,9 +426,16 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
         {/* Self-paced / manual hint */}
         {(phase === 'idle' || phase === 'waitingNext' || isAwaitingCopy) && (
           <div className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] text-center font-mono text-[8px] uppercase tracking-[0.18em] text-[--fg-muted]">
-            {isAwaitingCopy ? 'TAP / SPACE / PAGE↓ to mirror · PAGE↑ prev · . pause'
-              : phase === 'idle' ? 'SPACE / PAGE↓ start · . play-pause'
-              : 'SPACE / PAGE↓ next · PAGE↑ prev · . pause'}
+            <div>
+              {isAwaitingCopy ? 'TAP / CLICKER NEXT to mirror · CLICKER PREV previous · . pause'
+                : phase === 'idle' ? 'CLICKER NEXT / SPACE start · . play-pause'
+                : 'CLICKER NEXT next · CLICKER PREV previous · . pause'}
+            </div>
+            {lastControlSignal && (
+              <div className="mt-1 text-[7px] tracking-[0.14em] text-[--fg-muted]/70">
+                Last remote: {lastControlSignal}
+              </div>
+            )}
           </div>
         )}
       </div>
