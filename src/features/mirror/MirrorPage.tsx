@@ -35,6 +35,7 @@ type SectionKey = 'mode' | 'flow' | 'cues' | 'timing' | 'speed' | 'filters' | 'm
 type EreEvaluationState =
   | { status: 'idle' }
   | { status: 'previewing' }
+  | { status: 'recorded' }
   | { status: 'evaluating' }
   | { status: 'done'; result: EreEvaluationResult }
   | { status: 'error'; message: string }
@@ -99,6 +100,12 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
       setEreEvaluation({ status: 'previewing' })
       showLog('ERE • playing learner recording')
       if (previewUrl) await playCopyPreview(previewUrl)
+
+      if (!settingsRef.current.ereEvaluationEnabled) {
+        setEreEvaluation({ status: 'recorded' })
+        showLog('ERE • evaluation off — mirror recording kept local only')
+        return
+      }
 
       setEreEvaluation({ status: 'evaluating' })
       showLog('ERE • transcribing and comparing meaning')
@@ -235,7 +242,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
       category,
       ...(category === 'ere'
         ? { level: '', sentenceForm: 'all' as const }
-        : { ereTopic: '', erePart: '' }),
+        : { ereTopic: '', erePart: '', ereEvaluationEnabled: false }),
     })
   }
 
@@ -369,6 +376,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
               )}
             </div>
             {ereEvaluation.status === 'previewing' && <p className="mt-2 text-sm text-[--fg]/80">Playing your recording back…</p>}
+            {ereEvaluation.status === 'recorded' && <p className="mt-2 text-sm text-[--fg]/80">Evaluation is off. Mirror recording preview finished; no STT or LLM comparison was run.</p>}
             {ereEvaluation.status === 'evaluating' && <p className="mt-2 text-sm text-[--fg]/80">Transcribing and checking meaning…</p>}
             {ereEvaluation.status === 'error' && <p className="mt-2 text-sm text-[--accent]">{ereEvaluation.message}</p>}
             {ereEvaluation.status === 'done' && (
@@ -603,6 +611,15 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                           <option key={part} value={part}>{part}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="rounded-[10px] border border-[--line] bg-[--bg]/60 px-3 py-2">
+                      <ToggleRow
+                        label="ERE evaluation"
+                        hint="Off: only play + mirror audio. On: send recording to STT + semantic compare."
+                        checked={Boolean(settings.ereEvaluationEnabled)}
+                        onChange={(v) => set('ereEvaluationEnabled', v)}
+                      />
                     </div>
                   </>
                 ) : (

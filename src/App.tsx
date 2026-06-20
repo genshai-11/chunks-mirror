@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS: RoomSettings = {
   sentenceForm: 'all',
   ereTopic: '',
   erePart: '',
+  ereEvaluationEnabled: false,
   randomMix: false,
   autoAdvance: true,
   gateBeforeCopy: false,

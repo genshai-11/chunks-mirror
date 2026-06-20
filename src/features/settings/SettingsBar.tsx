@@ -40,7 +40,7 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
     category,
     ...(category === 'ere'
       ? { level: '', sentenceForm: 'all' as const }
-      : { ereTopic: '', erePart: '' }),
+      : { ereTopic: '', erePart: '', ereEvaluationEnabled: false }),
   })
   const isEre = settings.category === 'ere'
 
@@ -135,6 +135,7 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
 
       <div className="grid gap-3 border-t border-[--line] px-4 py-3 md:grid-cols-2">
         <Check label="Random mix" checked={settings.randomMix} onChange={(v) => set('randomMix', v)} />
+        {isEre && <Check label="ERE evaluation (STT + compare)" checked={Boolean(settings.ereEvaluationEnabled)} onChange={(v) => set('ereEvaluationEnabled', v)} />}
         {modeIsDynamic(settings.mode) ? (
           <>
             <Check label="Auto-advance" checked={settings.autoAdvance} onChange={(v) => set('autoAdvance', v)} />

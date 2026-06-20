@@ -77,6 +77,7 @@ export interface RoomSettings {
   sentenceForm?: 'all' | SentenceForm
   ereTopic?: number | ''
   erePart?: string | ''
+  ereEvaluationEnabled?: boolean
   randomMix: boolean
 
   // ── Dynamic flow controls (driven by mode preset; editable in offline/custom) ──

@@ -29,7 +29,7 @@ Snapshot of where the project actually is. Canonical task state is Hermes (when 
 - Music Snippet generation + acoustic scoring are R&D (deferred).
 - **ERE Topic 5 upload paused by Lucy at 2026-06-20 16:43 GMT+7.** Current bucket count after Functions deploy validation: **31/105 mp3** and **31/105 `.meta.json`** under `audio/ere/topic-05/en/`. Pending task: resume idempotent importer later to finish remaining 74 clips after Functions work is validated.
 - ERE evaluation Functions endpoint `/api/ere/evaluate-attempt` is deployed in Firebase Functions. Evidence: `/api/health` returned OK and invalid ERE evaluation payload returned HTTP 400 on 2026-06-20 16:47 GMT+7. Preview branch `preview/ere-ui-evaluation` includes 9router SSE/stream parser fixes (`404fe37`, `2377825`).
-- ERE UI + recording/evaluation UI + presenter/clicker controls are deployed to Firebase Hosting preview channel `ere-ui-eval-20260620`: https://chunks-mirror--ere-ui-eval-20260620-brns1cwp.web.app (expires 2026-06-27 16:51 GMT+7). Production Hosting remains unchanged.
+- ERE UI + recording/evaluation UI + presenter/clicker controls are deployed to Firebase Hosting preview channel `ere-ui-eval-20260620`: https://chunks-mirror--ere-ui-eval-20260620-brns1cwp.web.app (expires 2026-06-27 16:51 GMT+7). Production Hosting remains unchanged. ERE Evaluation is now an explicit Dynamic Settings toggle and defaults **off**, so ERE can run as plain play → mirror audio without STT/LLM compare until the toggle is enabled.
 - ERE preview E2E test with real Topic 5 mp3 payload succeeded on 2026-06-20 16:56 GMT+7: source `Let's say...`, transcript `Let's`, HTTP 200, saved attempt, semantic result `passed=false`, score `0.4`, feedback `You started correctly, but you missed “say.”`
 
 ## Progress
