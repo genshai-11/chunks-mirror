@@ -16,3 +16,4 @@ mcps/
 __pycache__/
 *.pyc
 .claude/
+resource-chunks/

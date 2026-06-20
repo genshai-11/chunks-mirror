@@ -1,10 +1,10 @@
 # 04 — Operating State · Chunks Mirror (Sound)
 
-Snapshot of where the project actually is. Canonical task state is Hermes (when seeded); this mirrors it. Last update: 2026-06-20 (settings reload pause, animal SFX cloud import, mobile/web scrolling polish).
+Snapshot of where the project actually is. Canonical task state is Hermes (when seeded); this mirrors it. Last update: 2026-06-20 16:43 GMT+7 (ERE functions-first work; Topic 5 upload paused).
 
 ## Current phase
 
-**Firebase production live + 4-mode Mirror Room + Resource Bank cloud persistence.** Current focus: polish loop behavior, mobile/web scrolling, and imported SFX bank quality.
+**Firebase production live + 4-mode Mirror Room + Resource Bank cloud persistence.** Current focus: ERE functions-first implementation (record → STT → semantic compare → save attempt), with Topic 5 upload intentionally paused.
 
 ## Board snapshot
 
@@ -27,6 +27,8 @@ Snapshot of where the project actually is. Canonical task state is Hermes (when 
 - Stack confirmation at build-plan gate (Candidate → Accepted).
 - `NINEROUTER_URL` / `NINEROUTER_KEY` values needed before live TTS generation (placeholders in `.env.local.example`).
 - Music Snippet generation + acoustic scoring are R&D (deferred).
+- **ERE Topic 5 upload paused by Lucy at 2026-06-20 16:43 GMT+7.** Current bucket count before pause: **31/105 mp3** and **31/105 `.meta.json`** under `audio/ere/topic-05/en/`. Pending task: resume idempotent importer later to finish remaining 74 clips after Functions work is validated/deployed.
+- ERE evaluation Functions endpoint is implemented locally and syntax-checked, but not yet preview/prod deployed.
 
 ## Progress
 

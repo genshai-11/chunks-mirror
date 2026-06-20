@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChunksAwareResource, RoomSettings } from '../../domain/types'
+import type { ChunksAwareResource, MirrorAttempt, RoomSettings } from '../../domain/types'
 import { MirrorLoopController, type LoopPhase } from '../../domain/mirrorLoop'
 import { langName } from '../../domain/languages'
 import { INTERACTION_MODES, MODE_META, modeIsDynamic, applyMode } from '../../domain/roomModes'
+import { ERE_PART_OPTIONS, ERE_TOPIC_OPTIONS } from '../../domain/ere'
 import { BrowserAudioPlaybackAdapter } from '../../adapters/audioPlayback'
 import { BrowserMicRecordingAdapter } from '../../adapters/micCapture'
 import { playAudioCue } from '../../adapters/audioCue'
+import { evaluateEreAttempt, type EreEvaluationResult } from '../../adapters/ereEvaluation'
 
 interface MirrorPageProps {
   settings: RoomSettings
@@ -25,9 +27,17 @@ const CAT_CHIPS: Array<{ value: RoomSettings['category']; label: string }> = [
   { value: 'sfx_nature', label: 'Nature' },
   { value: 'sfx_human', label: 'Human' },
   { value: 'music_snippet', label: 'Music' },
+  { value: 'ere', label: 'ERE' },
 ]
 
 type SectionKey = 'mode' | 'flow' | 'cues' | 'timing' | 'speed' | 'filters' | 'mix'
+
+type EreEvaluationState =
+  | { status: 'idle' }
+  | { status: 'previewing' }
+  | { status: 'evaluating' }
+  | { status: 'done'; result: EreEvaluationResult }
+  | { status: 'error'; message: string }
 
 export default function MirrorPage({ settings, pool, onLog, onSettingsChange, availableLangs }: MirrorPageProps) {
   const [phase, setPhase] = useState<LoopPhase>('idle')
@@ -37,6 +47,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const [panelOpen, setPanelOpen] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth >= 1024
   )
+  const [ereEvaluation, setEreEvaluation] = useState<EreEvaluationState>({ status: 'idle' })
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     mode: true,
     flow: true,
@@ -66,11 +77,40 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const showLog = useCallback((msg: string) => onLog?.(msg), [onLog])
 
   const retainCopyPreview = useCallback((blob?: Blob) => {
-    if (!blob) return
+    if (!blob) return undefined
     const url = URL.createObjectURL(blob)
     if (copyPreviewUrlRef.current) URL.revokeObjectURL(copyPreviewUrlRef.current)
     copyPreviewUrlRef.current = url
+    return url
   }, [])
+
+  const playCopyPreview = useCallback((url: string) => new Promise<void>((resolve, reject) => {
+    const audio = new Audio(url)
+    audio.onended = () => resolve()
+    audio.onerror = () => reject(new Error('Could not play learner recording'))
+    audio.play().catch(reject)
+  }), [])
+
+  const handleAttempt = useCallback(async (attempt: MirrorAttempt) => {
+    const previewUrl = retainCopyPreview(attempt.copyBlob)
+    if (attempt.resource?.category !== 'ere' || !attempt.copyBlob) return
+
+    try {
+      setEreEvaluation({ status: 'previewing' })
+      showLog('ERE • playing learner recording')
+      if (previewUrl) await playCopyPreview(previewUrl)
+
+      setEreEvaluation({ status: 'evaluating' })
+      showLog('ERE • transcribing and comparing meaning')
+      const result = await evaluateEreAttempt(attempt.resource, attempt.copyBlob)
+      setEreEvaluation({ status: 'done', result })
+      showLog(`ERE • ${result.passed ? 'PASS' : 'NOT YET'} · ${Math.round(result.score * 100)}%`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setEreEvaluation({ status: 'error', message })
+      showLog(`ERE evaluation error: ${message}`)
+    }
+  }, [playCopyPreview, retainCopyPreview, showLog])
 
   useEffect(() => {
     const cue = () => playAudioCue(CUE_URL)
@@ -80,9 +120,12 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
       getSettings: () => settingsRef.current,
       getPool: () => poolRef.current,
       onPhaseChange: (p) => setPhase(p),
-      onCurrentItemChange: (item) => setCurrent(item),
+      onCurrentItemChange: (item) => {
+        setCurrent(item)
+        if (item) setEreEvaluation({ status: 'idle' })
+      },
       onLog: showLog,
-      onAttempt: (a) => retainCopyPreview(a.copyBlob),
+      onAttempt: (a) => { void handleAttempt(a) },
       onCountdown: (remaining, p) => {
         setCountdown(remaining)
         setCountdownPhase(p)
@@ -96,7 +139,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
     setCurrent(null)
     return () => { controller.stop() }
     // Created once: settings/pool are read live via refs so toggling them never resets the loop.
-  }, [retainCopyPreview, showLog])
+  }, [handleAttempt, showLog])
 
   useEffect(() => () => {
     if (copyPreviewUrlRef.current) {
@@ -114,18 +157,48 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'select' || tag === 'textarea' || target?.isContentEditable) return
+
       const ctrl = controllerRef.current
       if (!ctrl) return
-      const advanceKey = e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter' || e.key.toLowerCase() === 'n'
+
+      const key = e.key.toLowerCase()
+      const advanceKey = e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter' || key === 'n'
+      const previousKey = e.key === 'ArrowLeft' || e.key === 'PageUp' || key === 'p' || e.key === 'Backspace'
+      const pauseKey = e.key === 'MediaPlayPause' || e.code === 'MediaPlayPause' || key === '.' || key === 'k'
+
+      if (pauseKey) {
+        e.preventDefault()
+        ctrl.togglePause()
+        return
+      }
+
+      if (previousKey && phase !== 'idle') {
+        e.preventDefault()
+        ctrl.previous()
+        return
+      }
+
+      if (phase === 'idle' && advanceKey) {
+        e.preventDefault()
+        ctrl.start()
+        return
+      }
+
       if (phase === 'awaitingCopy' && advanceKey) {
         e.preventDefault()
         ctrl.beginCopy()
         return
       }
+
       if ((phase === 'waitingNext' || phase === 'betweenItems') && advanceKey) {
         e.preventDefault()
         ctrl.next()
+        return
       }
+
       if (e.key === 'Escape' && phase !== 'idle') {
         e.preventDefault()
         ctrl.stop()
@@ -156,6 +229,16 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const set = <K extends keyof RoomSettings>(key: K, val: RoomSettings[K]) =>
     applySettingsChange({ ...settings, [key]: val })
 
+  const setCategory = (category: RoomSettings['category']) => {
+    applySettingsChange({
+      ...settings,
+      category,
+      ...(category === 'ere'
+        ? { level: '', sentenceForm: 'all' as const }
+        : { ereTopic: '', erePart: '' }),
+    })
+  }
+
   const isListening = phase === 'playingOriginal'
   const isRecording = phase === 'recordingCopy'
   const isAwaitingCopy = phase === 'awaitingCopy'
@@ -172,6 +255,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
 
   const phaseAccent = isRecording || isAwaitingCopy ? 'text-[--accent]' : isListening ? 'text-[--fg]' : 'text-[--fg-muted]'
   const dynamic = modeIsDynamic(settings.mode)
+  const isEre = settings.category === 'ere'
 
   return (
     <main className="flex min-h-[100dvh] overflow-x-hidden bg-[--bg] text-[--fg]">
@@ -257,7 +341,9 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           {current ? (
             <>
               <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[--fg-muted]">
-                {[current.language?.toUpperCase(), `L${current.level}`, current.form].filter(Boolean).join(' · ')}
+                {current.category === 'ere'
+                  ? [`ERE T${current.ereTopic ?? '?'}`, current.erePart, current.language?.toUpperCase()].filter(Boolean).join(' · ')
+                  : [current.language?.toUpperCase(), `L${current.level}`, current.form].filter(Boolean).join(' · ')}
               </div>
               <p className="text-lg italic leading-relaxed text-[--fg]/80 sm:text-xl">
                 &ldquo;{current.textPrompt || current.soundPrompt || '…'}&rdquo;
@@ -272,10 +358,34 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           )}
         </div>
 
+        {current?.category === 'ere' && ereEvaluation.status !== 'idle' && (
+          <div className="w-full max-w-md rounded-[14px] border border-[--line] bg-[--bg-elev] px-4 py-3 text-left shadow-[0_24px_80px_-55px_rgba(0,0,0,0.9)]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-mono text-[8px] uppercase tracking-[0.2em] text-[--fg-muted]">ERE evaluation</div>
+              {ereEvaluation.status === 'done' && (
+                <span className={`rounded-full px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.14em] ${ereEvaluation.result.passed ? 'bg-emerald-500/15 text-emerald-300' : 'bg-[--accent]/15 text-[--accent]'}`}>
+                  {ereEvaluation.result.passed ? 'Pass' : 'Not yet'} · {Math.round(ereEvaluation.result.score * 100)}%
+                </span>
+              )}
+            </div>
+            {ereEvaluation.status === 'previewing' && <p className="mt-2 text-sm text-[--fg]/80">Playing your recording back…</p>}
+            {ereEvaluation.status === 'evaluating' && <p className="mt-2 text-sm text-[--fg]/80">Transcribing and checking meaning…</p>}
+            {ereEvaluation.status === 'error' && <p className="mt-2 text-sm text-[--accent]">{ereEvaluation.message}</p>}
+            {ereEvaluation.status === 'done' && (
+              <div className="mt-2 space-y-2 text-sm leading-relaxed text-[--fg]/80">
+                <p><span className="text-[--fg-muted]">Transcript:</span> “{ereEvaluation.result.transcript || '—'}”</p>
+                <p><span className="text-[--fg-muted]">Feedback:</span> {ereEvaluation.result.feedback}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Self-paced / manual hint */}
-        {(phase === 'waitingNext' || isAwaitingCopy) && (
-          <div className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] font-mono text-[9px] uppercase tracking-[0.22em] text-[--fg-muted]">
-            {isAwaitingCopy ? 'TAP / SPACE to mirror · ESC stop' : 'SPACE / → next · ESC stop'}
+        {(phase === 'idle' || phase === 'waitingNext' || isAwaitingCopy) && (
+          <div className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] text-center font-mono text-[8px] uppercase tracking-[0.18em] text-[--fg-muted]">
+            {isAwaitingCopy ? 'TAP / SPACE / PAGE↓ to mirror · PAGE↑ prev · . pause'
+              : phase === 'idle' ? 'SPACE / PAGE↓ start · . play-pause'
+              : 'SPACE / PAGE↓ next · PAGE↑ prev · . pause'}
           </div>
         )}
       </div>
@@ -438,7 +548,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                       <button
                         key={String(opt.value)}
                         type="button"
-                        onClick={() => set('category', opt.value)}
+                        onClick={() => setCategory(opt.value)}
                         className={`rounded-[999px] border px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[0.1em] transition-all ${
                           (settings.category ?? '') === (opt.value ?? '')
                             ? 'border-[--accent] bg-[--accent] text-white'
@@ -465,45 +575,79 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   </select>
                 </div>
 
-                <div className="space-y-2">
-                  <SubLabel>Level</SubLabel>
-                  <div className="flex gap-1.5">
-                    {([['', 'All'], ['1', 'L1'], ['2', 'L2'], ['3', 'L3']] as const).map(([val, lbl]) => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => set('level', val === '' ? '' : Number(val))}
-                        className={`flex-1 rounded-[7px] border py-2 font-mono text-[9px] uppercase tracking-[0.1em] transition-all ${
-                          String(settings.level ?? '') === val
-                            ? 'border-[--accent] bg-[--accent] text-white'
-                            : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
-                        }`}
+                {isEre ? (
+                  <>
+                    <div className="space-y-2">
+                      <SubLabel>Topic</SubLabel>
+                      <select
+                        value={settings.ereTopic ?? ''}
+                        onChange={(e) => set('ereTopic', e.target.value ? Number(e.target.value) : '')}
+                        className="w-full rounded-[7px] border border-[--line] bg-[--bg] px-3 py-2.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[--fg] outline-none focus:border-[--accent]"
                       >
-                        {lbl}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <option value="">All topics</option>
+                        {ERE_TOPIC_OPTIONS.map((topic) => (
+                          <option key={topic} value={topic}>Topic {topic}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="space-y-2">
-                  <SubLabel>Form</SubLabel>
-                  <div className="flex gap-1.5">
-                    {(['all', 'short', 'medium', 'long'] as const).map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => set('sentenceForm', f)}
-                        className={`flex-1 rounded-[7px] border py-2 font-mono text-[8px] uppercase tracking-[0.08em] transition-all ${
-                          (settings.sentenceForm ?? 'all') === f
-                            ? 'border-[--accent] bg-[--accent] text-white'
-                            : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
-                        }`}
+                    <div className="space-y-2">
+                      <SubLabel>Part</SubLabel>
+                      <select
+                        value={settings.erePart ?? ''}
+                        onChange={(e) => set('erePart', e.target.value)}
+                        className="w-full rounded-[7px] border border-[--line] bg-[--bg] px-3 py-2.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[--fg] outline-none focus:border-[--accent]"
                       >
-                        {f === 'all' ? 'All' : f.slice(0, 3)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <option value="">All parts</option>
+                        {ERE_PART_OPTIONS.map((part) => (
+                          <option key={part} value={part}>{part}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <SubLabel>Level</SubLabel>
+                      <div className="flex gap-1.5">
+                        {([['', 'All'], ['1', 'L1'], ['2', 'L2'], ['3', 'L3']] as const).map(([val, lbl]) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => set('level', val === '' ? '' : Number(val))}
+                            className={`flex-1 rounded-[7px] border py-2 font-mono text-[9px] uppercase tracking-[0.1em] transition-all ${
+                              String(settings.level ?? '') === val
+                                ? 'border-[--accent] bg-[--accent] text-white'
+                                : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
+                            }`}
+                          >
+                            {lbl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <SubLabel>Form</SubLabel>
+                      <div className="flex gap-1.5">
+                        {(['all', 'short', 'medium', 'long'] as const).map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => set('sentenceForm', f)}
+                            className={`flex-1 rounded-[7px] border py-2 font-mono text-[8px] uppercase tracking-[0.08em] transition-all ${
+                              (settings.sentenceForm ?? 'all') === f
+                                ? 'border-[--accent] bg-[--accent] text-white'
+                                : 'border-[--line] text-[--fg-muted] hover:text-[--fg]'
+                            }`}
+                          >
+                            {f === 'all' ? 'All' : f.slice(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </Accordion>
 

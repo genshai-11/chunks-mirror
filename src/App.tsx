@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS: RoomSettings = {
   language: '',
   level: '',
   sentenceForm: 'all',
+  ereTopic: '',
+  erePart: '',
   randomMix: false,
   autoAdvance: true,
   gateBeforeCopy: false,
@@ -76,7 +78,7 @@ function getLibraryItemKey(item: LibraryItemLike & { _staged?: boolean }) {
 }
 
 function isResourceCategory(value: unknown): value is ChunksAwareResource['category'] {
-  return typeof value === 'string' && ['speech', 'music_snippet', 'sfx_animal', 'sfx_object', 'sfx_nature', 'sfx_human', 'other'].includes(value)
+  return typeof value === 'string' && ['speech', 'music_snippet', 'sfx_animal', 'sfx_object', 'sfx_nature', 'sfx_human', 'other', 'ere'].includes(value)
 }
 
 function isSourceKind(value: unknown): value is ChunksAwareResource['sourceKind'] {
@@ -181,7 +183,7 @@ export default function App() {
             .map((item, index) => {
               const currentItem = currentByUrl.get(item.url as string)
               return {
-                id: currentItem?.id || `firebase-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
+                id: typeof item.id === 'string' ? item.id : currentItem?.id || `firebase-${String(item.pathname || Date.now() + index).replace(/\W/g, '-')}`,
                 category: isResourceCategory(item.category) ? item.category : 'speech',
                 sourceKind: isSourceKind(item.sourceKind) ? item.sourceKind : 'tts',
                 audioUrl: item.url as string,
@@ -203,6 +205,13 @@ export default function App() {
                 resistanceTag: typeof item.resistanceTag === 'string' ? item.resistanceTag : 'firebase-storage',
                 lessonId: typeof item.lessonId === 'string' ? item.lessonId : 'firebase-storage-library',
                 mirrorGoal: isMirrorGoal(item.mirrorGoal) ? item.mirrorGoal : 'prosody',
+                ereTopic: typeof item.ereTopic === 'number' ? item.ereTopic : typeof item.ereTopic === 'string' ? Number(item.ereTopic) : undefined,
+                ereTopicTitle: typeof item.ereTopicTitle === 'string' ? item.ereTopicTitle : undefined,
+                erePart: typeof item.erePart === 'string' ? item.erePart : undefined,
+                ereType: typeof item.ereType === 'string' ? item.ereType : undefined,
+                ereUrlId: typeof item.ereUrlId === 'string' ? item.ereUrlId : undefined,
+                ereVietnameseText: typeof item.ereVietnameseText === 'string' ? item.ereVietnameseText : undefined,
+                ereAudioFilename: typeof item.ereAudioFilename === 'string' ? item.ereAudioFilename : undefined,
               }
             })
 

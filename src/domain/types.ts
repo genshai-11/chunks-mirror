@@ -8,6 +8,7 @@ export type SoundCategory =
   | 'sfx_nature'
   | 'sfx_human'
   | 'other'
+  | 'ere'
 
 export type SourceKind = 'tts' | 'text_to_sound' | 'imported'
 
@@ -47,6 +48,16 @@ export interface ChunksAwareResource {
   resistanceTag?: string
   lessonId?: string
   mirrorGoal?: MirrorGoal
+
+  // ERE-specific imported lesson metadata. Kept optional so ERE can later split
+  // into its own platform without changing current library resources.
+  ereTopic?: number
+  ereTopicTitle?: string
+  erePart?: string
+  ereType?: string
+  ereUrlId?: string
+  ereVietnameseText?: string
+  ereAudioFilename?: string
 }
 
 // auto    — one tap runs G→O→C and auto-advances to the next item
@@ -64,6 +75,8 @@ export interface RoomSettings {
   language?: string | ''
   level?: number | ''
   sentenceForm?: 'all' | SentenceForm
+  ereTopic?: number | ''
+  erePart?: string | ''
   randomMix: boolean
 
   // ── Dynamic flow controls (driven by mode preset; editable in offline/custom) ──
@@ -90,6 +103,7 @@ export type LoopPhase =
 
 export interface MirrorAttempt {
   resourceId: string
+  resource?: ChunksAwareResource
   sourceAudioUrl?: string
   copyBlob?: Blob
   startedAt: number

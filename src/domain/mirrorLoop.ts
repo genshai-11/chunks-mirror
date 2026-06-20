@@ -77,6 +77,25 @@ export class MirrorLoopController {
     this.advance()
   }
 
+  previous() {
+    if (!this.isRunning) return
+    this.clearTimer()
+    this.opts.playback.stop()
+    if (this.opts.mic.isRecording()) {
+      this.opts.mic.stop().catch(() => {})
+    }
+    this.queueIndex = Math.max(0, this.queueIndex - 2)
+    this.advance()
+  }
+
+  togglePause() {
+    if (this.isRunning) {
+      this.stop()
+    } else {
+      this.start()
+    }
+  }
+
   // For offline / custom self-paced gate: begin Copy Capture when the learner is ready
   beginCopy() {
     if (!this.isRunning || this.phase !== 'awaitingCopy') return
@@ -232,6 +251,7 @@ export class MirrorLoopController {
     // Emit MirrorAttempt (score is off)
     const attempt: MirrorAttempt = {
       resourceId: this.current.id,
+      resource: this.current,
       sourceAudioUrl: this.current.audioUrl,
       copyBlob: copyBlob || this.lastCopyBlob || undefined,
       startedAt: Date.now(),
@@ -240,7 +260,9 @@ export class MirrorLoopController {
     }
     this.opts.onAttempt?.(attempt)
 
-    if (settings.autoAdvance && this.isRunning) {
+    const shouldAutoAdvance = settings.autoAdvance && this.current.category !== 'ere'
+
+    if (shouldAutoAdvance && this.isRunning) {
       this.opts.onLog('… next (auto)')
       this.setPhase('preparing') // brief visual
       this.timer = window.setTimeout(() => {

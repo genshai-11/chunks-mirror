@@ -4,6 +4,18 @@ Append-only. Newest on top. Status: `Accepted` (human-confirmed) · `Candidate` 
 
 ---
 
+## ADR-0014 — ERE practice uses learner recording + STT + semantic pass/fail
+- **Status:** Accepted (2026-06-20 16:43 GMT+7)
+- **Decision:** Add an ERE-specific practice/evaluation path on top of the existing Mirror loop: play original ERE audio → learner manually starts C recording when ready → record for configured `cSeconds` → auto-stop → play learner recording back → call server-side 9router STT (`gemini/gemini-2.5-flash-lite`) → compare transcript against the original English sentence for preserved meaning → save learner attempt audio + JSON in Cloud Storage → return transcript, score, feedback, and pass/fail. ERE pass/fail is **semantic**, not word-perfect; preserving the main idea is enough.
+- **Why:** Lucy requested ERE to support custom/manual recording and evaluation that judges whether the learner kept the original English meaning, while retaining learner data for later review.
+- **Impact:** Adds `/api/ere/evaluate-attempt` in Firebase Functions, frontend ERE evaluation adapter/UI, ERE attempt storage under `attempts/ere/{learnerId}/`, and a stable anonymous local learner ID. This intentionally narrows ADR-0006: scoring remains off for normal sound-first resources, but ERE now has a semantic evaluation path.
+
+## ADR-0015 — Presenter/clicker keyboard controls for led/manual practice
+- **Status:** Accepted (2026-06-20 16:43 GMT+7)
+- **Decision:** Mirror Room accepts keyboard/presenter remote signals: `Space`/`Enter`/`ArrowRight`/`PageDown`/`n` for start/next/begin-copy, `ArrowLeft`/`PageUp`/`p`/`Backspace` for previous, `.`/`k`/`MediaPlayPause` for pause/resume, and `Escape` for stop. Most presentation clickers emit PageDown/PageUp, so this enables pause/previous/next without special hardware integration.
+- **Why:** Lucy asked how manual mode can respond to a presentation pen for pause, previous, next, and continue playback.
+- **Impact:** Adds controller `previous()` and `togglePause()` methods plus global key handling in `MirrorPage.tsx`. This keeps the one-button UI unchanged while supporting classroom/led-session operation.
+
 ## ADR-0013 — Four dynamic interaction modes + flow gates + per-boundary cues
 - **Status:** Accepted (2026-06-19)
 - **Decision:** Expand the Mirror Room from 2 to **4 interaction modes**: `auto`, `manual`, `offline`, `custom`. Flow is driven by two gates — `autoAdvance` (roll into next item vs wait between items) and `gateBeforeCopy` (new `awaitingCopy` phase: wait for a tap before recording C). The single ending cue is split into **three per-boundary cues** — `cueOnListen` (G→O), `cueOnMirror` (O→C, the classic signal), `cueOnEnd` (C→next). `auto`/`manual` are fixed presets; `offline` is a self-paced preset whose gates remain editable; `custom` exposes every gate and cue. Presets live in `src/domain/roomModes.ts` (`applyMode`); custom preserves the learner's current flags. Dynamic Settings is now a collapsible accordion sidebar with its own scroll, and the controller reads settings via live refs so mid-session toggles never reset the loop.

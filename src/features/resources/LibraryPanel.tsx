@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { SoundCategory } from '../../domain/types'
 import { langName } from '../../domain/languages'
 import { resolveSentenceForm } from '../../domain/selection'
+import { ERE_PART_OPTIONS, ERE_TOPIC_OPTIONS } from '../../domain/ere'
 
 type LibraryItem = {
   id?: string
@@ -15,6 +16,13 @@ type LibraryItem = {
   audioUrl?: string
   provider?: string
   approvalStatus?: string
+  ereTopic?: number
+  ereTopicTitle?: string
+  erePart?: string
+  ereType?: string
+  ereUrlId?: string
+  ereVietnameseText?: string
+  ereAudioFilename?: string
   _staged?: boolean
 }
 
@@ -49,9 +57,10 @@ const CAT_LABEL: Record<string, string> = {
   sfx_human: 'Human SFX',
   music_snippet: 'Music',
   other: 'Other',
+  ere: 'ERE',
 }
 
-const CAT_ORDER: SoundCategory[] = ['speech', 'sfx_animal', 'sfx_object', 'sfx_nature', 'sfx_human', 'music_snippet', 'other']
+const CAT_ORDER: SoundCategory[] = ['speech', 'ere', 'sfx_animal', 'sfx_object', 'sfx_nature', 'sfx_human', 'music_snippet', 'other']
 const FORM_ORDER: LibraryForm[] = ['all', 'short', 'medium', 'long']
 const SOURCE_ORDER: SourceFilter[] = ['all', 'approved', 'staged']
 const SOURCE_LABEL: Record<SourceFilter, string> = { all: 'All', approved: 'Approved', staged: 'Staged' }
@@ -97,6 +106,8 @@ export default function LibraryPanel({
 }: LibraryPanelProps) {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
   const [formFilter, setFormFilter] = useState<LibraryForm>('all')
+  const [ereTopicFilter, setEreTopicFilter] = useState('')
+  const [erePartFilter, setErePartFilter] = useState('')
   const [query, setQuery] = useState('')
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
   const [pageSize, setPageSize] = useState(24)
@@ -121,10 +132,13 @@ export default function LibraryPanel({
       if (sourceFilter === 'staged' && !item._staged) return false
       if (filterCat && item.category !== filterCat) return false
       if (filterLang && item.language !== filterLang) return false
-      if (formFilter !== 'all' && item._form !== formFilter) return false
+      if (filterCat === 'ere') {
+        if (ereTopicFilter && String(item.ereTopic ?? '') !== ereTopicFilter) return false
+        if (erePartFilter && item.erePart !== erePartFilter) return false
+      } else if (formFilter !== 'all' && item._form !== formFilter) return false
       return matchesQuery(item, normalizedQuery)
     })
-  }, [all, filterCat, filterLang, formFilter, query, sourceFilter])
+  }, [all, erePartFilter, ereTopicFilter, filterCat, filterLang, formFilter, query, sourceFilter])
 
   const visible = filtered.slice(0, pageSize)
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys])
@@ -139,6 +153,8 @@ export default function LibraryPanel({
   function resetFilters() {
     setSourceFilter('all')
     setFormFilter('all')
+    setEreTopicFilter('')
+    setErePartFilter('')
     setQuery('')
     onFilterCat('')
     onFilterLang('')
@@ -190,9 +206,16 @@ export default function LibraryPanel({
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <Select label="Source" value={sourceFilter} onChange={(value) => setSourceFilter(value as SourceFilter)} options={SOURCE_ORDER.map((value) => ({ value, label: SOURCE_LABEL[value] }))} />
-          <Select label="Category" value={filterCat} onChange={onFilterCat} options={[{ value: '', label: 'All' }, ...cats.map((cat) => ({ value: cat, label: CAT_LABEL[cat] || cat }))]} />
+          <Select label="Category" value={filterCat} onChange={(value) => { onFilterCat(value); if (value !== 'ere') { setEreTopicFilter(''); setErePartFilter('') } }} options={[{ value: '', label: 'All' }, ...cats.map((cat) => ({ value: cat, label: CAT_LABEL[cat] || cat }))]} />
           <Select label="Language" value={filterLang} onChange={onFilterLang} options={[{ value: '', label: 'All' }, ...langs.map((lang) => ({ value: lang, label: langName(lang) }))]} />
-          <Select label="Form" value={formFilter} onChange={(value) => setFormFilter(value as LibraryForm)} options={FORM_ORDER.map((value) => ({ value, label: value }))} />
+          {filterCat === 'ere' ? (
+            <>
+              <Select label="Topic" value={ereTopicFilter} onChange={setEreTopicFilter} options={[{ value: '', label: 'All' }, ...ERE_TOPIC_OPTIONS.map((topic) => ({ value: String(topic), label: `Topic ${topic}` }))]} />
+              <Select label="Part" value={erePartFilter} onChange={setErePartFilter} options={[{ value: '', label: 'All' }, ...ERE_PART_OPTIONS.map((part) => ({ value: part, label: part }))]} />
+            </>
+          ) : (
+            <Select label="Form" value={formFilter} onChange={(value) => setFormFilter(value as LibraryForm)} options={FORM_ORDER.map((value) => ({ value, label: value }))} />
+          )}
           <label className="block space-y-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[--fg-muted]">Limit</span>
             <input type="number" min={6} max={120} value={pageSize} onChange={(event) => setPageSize(Math.max(6, Math.min(120, Number(event.target.value) || 24)))} className="w-full rounded-[10px] border border-[--line] bg-[--bg] px-3 py-2 text-sm text-[--fg] outline-none focus:border-[--accent]" />
@@ -281,8 +304,18 @@ function ResourceRow({ item, selected, onToggleSelect, onPlay, onDelete, onPromo
           <span className="text-[--accent]">{item.language ? langName(item.language) : item.category || 'sound'}</span>
           <span>{item._staged ? 'staged' : 'approved'}</span>
           <span>{CAT_LABEL[item.category || ''] || item.category}</span>
-          <span>{item._form}</span>
-          <span>L{item.level ?? '?'}</span>
+          {item.category === 'ere' ? (
+            <>
+              <span>T{item.ereTopic ?? '?'}</span>
+              {item.erePart && <span>{item.erePart}</span>}
+              {item.ereType && <span>{item.ereType}</span>}
+            </>
+          ) : (
+            <>
+              <span>{item._form}</span>
+              <span>L{item.level ?? '?'}</span>
+            </>
+          )}
         </div>
         <div className="mt-1 truncate text-sm text-[--fg]">{item._text}</div>
       </div>

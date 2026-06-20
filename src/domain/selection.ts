@@ -19,12 +19,18 @@ export function filterResources(
   resources: ChunksAwareResource[],
   settings: RoomSettings,
 ): ChunksAwareResource[] {
-  const { category, language, level, sentenceForm } = settings
+  const { category, language, level, sentenceForm, ereTopic, erePart } = settings
 
   let pool = resources.filter((r) => {
     if (r.approvalStatus !== 'approved_resource') return false
     if (category && r.category !== category) return false
     if (language && r.language !== language) return false
+    if (r.category === 'ere') {
+      if (ereTopic && Number(r.ereTopic) !== Number(ereTopic)) return false
+      if (erePart && r.erePart !== erePart) return false
+      return true
+    }
+
     if (level && String(r.level) !== String(level)) return false
     if (sentenceForm && sentenceForm !== 'all') {
       if (resolveSentenceForm(r) !== sentenceForm) return false

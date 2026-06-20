@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { RoomSettings } from '../../domain/types'
 import { INTERACTION_MODES, MODE_META, modeIsDynamic, applyMode } from '../../domain/roomModes'
+import { ERE_PART_OPTIONS, ERE_TOPIC_OPTIONS } from '../../domain/ere'
 
 interface Props {
   settings: RoomSettings
@@ -34,6 +35,14 @@ function SegmentButton({ active, children, onClick }: { active: boolean; childre
 
 export default function SettingsBar({ settings, onChange, availableLangs }: Props) {
   const set = <K extends keyof RoomSettings>(key: K, value: RoomSettings[K]) => onChange({ ...settings, [key]: value })
+  const setCategory = (category: RoomSettings['category']) => onChange({
+    ...settings,
+    category,
+    ...(category === 'ere'
+      ? { level: '', sentenceForm: 'all' as const }
+      : { ereTopic: '', erePart: '' }),
+  })
+  const isEre = settings.category === 'ere'
 
   return (
     <section className="rounded-[18px] border border-[--line] bg-[--bg-elev]">
@@ -61,7 +70,7 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
         </Field>
 
         <Field label="Category">
-          <select value={settings.category || ''} onChange={(e) => set('category', e.target.value as RoomSettings['category'])} className={INPUT}>
+          <select value={settings.category || ''} onChange={(e) => setCategory(e.target.value as RoomSettings['category'])} className={INPUT}>
             <option value="">All</option>
             <option value="speech">Speech</option>
             <option value="sfx_animal">Animal sound</option>
@@ -70,6 +79,7 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
             <option value="sfx_human">Human SFX</option>
             <option value="music_snippet">Music</option>
             <option value="other">Other</option>
+            <option value="ere">ERE</option>
           </select>
         </Field>
 
@@ -80,23 +90,43 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
           </select>
         </Field>
 
-        <Field label="Level">
-          <select value={settings.level ?? ''} onChange={(e) => set('level', e.target.value ? Number(e.target.value) : '')} className={INPUT}>
-            <option value="">All</option>
-            <option value="1">Level 1</option>
-            <option value="2">Level 2</option>
-            <option value="3">Level 3</option>
-          </select>
-        </Field>
+        {isEre ? (
+          <>
+            <Field label="Topic">
+              <select value={settings.ereTopic ?? ''} onChange={(e) => set('ereTopic', e.target.value ? Number(e.target.value) : '')} className={INPUT}>
+                <option value="">All</option>
+                {ERE_TOPIC_OPTIONS.map((topic) => <option key={topic} value={topic}>Topic {topic}</option>)}
+              </select>
+            </Field>
 
-        <Field label="Form">
-          <select value={settings.sentenceForm || 'all'} onChange={(e) => set('sentenceForm', e.target.value as RoomSettings['sentenceForm'])} className={INPUT}>
-            <option value="all">All</option>
-            <option value="short">Short</option>
-            <option value="medium">Medium</option>
-            <option value="long">Long</option>
-          </select>
-        </Field>
+            <Field label="Part">
+              <select value={settings.erePart ?? ''} onChange={(e) => set('erePart', e.target.value)} className={INPUT}>
+                <option value="">All</option>
+                {ERE_PART_OPTIONS.map((part) => <option key={part} value={part}>{part}</option>)}
+              </select>
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Level">
+              <select value={settings.level ?? ''} onChange={(e) => set('level', e.target.value ? Number(e.target.value) : '')} className={INPUT}>
+                <option value="">All</option>
+                <option value="1">Level 1</option>
+                <option value="2">Level 2</option>
+                <option value="3">Level 3</option>
+              </select>
+            </Field>
+
+            <Field label="Form">
+              <select value={settings.sentenceForm || 'all'} onChange={(e) => set('sentenceForm', e.target.value as RoomSettings['sentenceForm'])} className={INPUT}>
+                <option value="all">All</option>
+                <option value="short">Short</option>
+                <option value="medium">Medium</option>
+                <option value="long">Long</option>
+              </select>
+            </Field>
+          </>
+        )}
       </div>
 
       <div className="border-t border-[--line] px-4 py-3">

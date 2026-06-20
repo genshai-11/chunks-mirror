@@ -186,6 +186,58 @@ function extensionFor(contentType) {
   return 'mp3'
 }
 
+function audioFormatFor(contentType) {
+  if (String(contentType).includes('webm')) return 'webm'
+  if (String(contentType).includes('wav')) return 'wav'
+  if (String(contentType).includes('ogg')) return 'ogg'
+  if (String(contentType).includes('mpeg') || String(contentType).includes('mp3')) return 'mp3'
+  return 'webm'
+}
+
+function parseJsonObject(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return {}
+  try { return JSON.parse(raw) } catch {}
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fenced) {
+    try { return JSON.parse(fenced[1]) } catch {}
+  }
+  const first = raw.indexOf('{')
+  const last = raw.lastIndexOf('}')
+  if (first >= 0 && last > first) {
+    try { return JSON.parse(raw.slice(first, last + 1)) } catch {}
+  }
+  return {}
+}
+
+function firstChatContent(payload) {
+  const content = payload && payload.choices && payload.choices[0] && payload.choices[0].message && payload.choices[0].message.content
+  if (Array.isArray(content)) {
+    return content.map((part) => typeof part === 'string' ? part : part.text || '').join('\n').trim()
+  }
+  return String(content || '').trim()
+}
+
+async function chatCompletion({ model, messages, temperature = 0, responseFormat }) {
+  const body = { model, messages, temperature }
+  if (responseFormat) body.response_format = responseFormat
+
+  const upstreamRes = await fetch(`${upstreamBase()}/chat/completions`, {
+    method: 'POST',
+    headers: upstreamHeaders(),
+    body: JSON.stringify(body),
+  })
+
+  if (!upstreamRes.ok) {
+    const text = await upstreamRes.text().catch(() => '')
+    const error = new Error(`9router upstream ${upstreamRes.status}: ${text.slice(0, 500)}`)
+    error.status = upstreamRes.status
+    throw error
+  }
+
+  return upstreamRes.json()
+}
+
 function downloadUrl(bucketName, pathname) {
   const encodedPath = String(pathname).split('/').map(encodeURIComponent).join('/')
   return `https://storage.googleapis.com/${bucketName}/${encodedPath}`
@@ -307,6 +359,131 @@ function pathFromUrl(url) {
   }
 }
 
+async function transcribeEreAudio({ audioBase64, contentType }) {
+  const model = process.env.ERE_STT_MODEL || 'gemini/gemini-2.5-flash-lite'
+  const payload = await chatCompletion({
+    model,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: 'Transcribe this learner English speaking audio. Return strict JSON only: {"transcript":"..."}. If speech is unclear, return the best short transcript.',
+        },
+        {
+          type: 'input_audio',
+          input_audio: {
+            data: audioBase64,
+            format: audioFormatFor(contentType),
+          },
+        },
+      ],
+    }],
+    temperature: 0,
+    responseFormat: { type: 'json_object' },
+  })
+
+  const parsed = parseJsonObject(firstChatContent(payload))
+  return String(parsed.transcript || '').trim()
+}
+
+async function compareEreMeaning({ sourceText, transcript }) {
+  const model = process.env.ERE_COMPARE_MODEL || 'lucy'
+  const payload = await chatCompletion({
+    model,
+    messages: [{
+      role: 'user',
+      content: `You are evaluating an English speaking practice attempt.\n\nOriginal English sentence:\n${sourceText}\n\nLearner transcript:\n${transcript}\n\nDecide whether the learner preserved the core meaning. Exact word-for-word matching is NOT required. Minor grammar or wording differences are okay if the main idea remains.\n\nReturn strict JSON only with this shape:\n{\n  "passed": true,\n  "score": 0.0,\n  "feedback": "one short learner-friendly sentence",\n  "meaningSummary": "short summary of preserved/missing meaning"\n}`,
+    }],
+    temperature: 0,
+    responseFormat: { type: 'json_object' },
+  })
+
+  const parsed = parseJsonObject(firstChatContent(payload))
+  const score = Number(parsed.score)
+  return {
+    passed: Boolean(parsed.passed),
+    score: Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0,
+    feedback: String(parsed.feedback || 'Meaning comparison completed.'),
+    meaningSummary: String(parsed.meaningSummary || ''),
+  }
+}
+
+async function evaluateEreAttempt(req, res) {
+  if (!requireMethod(req, res, 'POST')) return
+  const body = bodyOf(req)
+  const {
+    resourceId,
+    sourceText,
+    ereTopic,
+    erePart,
+    audioBase64,
+    contentType = 'audio/webm',
+    learnerId = 'anonymous',
+  } = body
+
+  if (!resourceId || !sourceText || !audioBase64) {
+    sendJson(res, 400, { error: 'resourceId, sourceText and audioBase64 required' })
+    return
+  }
+
+  if (String(audioBase64).length > 4_000_000) {
+    sendJson(res, 413, { error: 'recording too large' })
+    return
+  }
+
+  try {
+    const attemptId = `ere-${Date.now()}-${crypto.randomUUID()}`
+    const safeLearnerId = String(learnerId).replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80) || 'anonymous'
+    const ext = extensionFor(contentType)
+    const recordingPath = `attempts/ere/${safeLearnerId}/${attemptId}.${ext}`
+    const jsonPath = `attempts/ere/${safeLearnerId}/${attemptId}.json`
+    const bucket = configuredBucket()
+    const recordingBuffer = Buffer.from(String(audioBase64), 'base64')
+
+    const transcript = await transcribeEreAudio({ audioBase64, contentType })
+    const comparison = await compareEreMeaning({ sourceText, transcript })
+
+    const attempt = {
+      attemptId,
+      learnerId: safeLearnerId,
+      resourceId,
+      sourceText,
+      transcript,
+      passed: comparison.passed,
+      score: comparison.score,
+      feedback: comparison.feedback,
+      meaningSummary: comparison.meaningSummary,
+      ereTopic: typeof ereTopic === 'number' ? ereTopic : Number(ereTopic) || null,
+      erePart: erePart || '',
+      createdAt: new Date().toISOString(),
+      recordingPath,
+    }
+
+    await Promise.all([
+      bucket.file(recordingPath).save(recordingBuffer, {
+        resumable: false,
+        metadata: {
+          contentType,
+          cacheControl: 'private, max-age=0, no-store',
+        },
+      }),
+      saveJson(bucket.file(jsonPath), attempt),
+    ])
+
+    sendJson(res, 200, {
+      attemptId,
+      transcript,
+      passed: attempt.passed,
+      score: attempt.score,
+      feedback: attempt.feedback,
+    })
+  } catch (error) {
+    logger.error('ere evaluate failure', error)
+    sendJson(res, error.status || 500, { error: 'ere evaluation failure', message: String(error && error.message ? error.message : error) })
+  }
+}
+
 async function deleteAudio(req, res) {
   if (!requireMethod(req, res, 'POST')) return
   const body = bodyOf(req)
@@ -415,6 +592,7 @@ exports.api = onRequest({
   if (route === '/list-models') return listModels(req, res)
   if (route === '/upload-audio') return uploadAudio(req, res)
   if (route === '/list-audio') return listAudio(req, res)
+  if (route === '/ere/evaluate-attempt') return evaluateEreAttempt(req, res)
   if (route === '/delete-audio') return deleteAudio(req, res)
   if (route === '/admin-cleanup') return adminCleanup(req, res)
 
