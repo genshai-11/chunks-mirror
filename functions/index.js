@@ -9,9 +9,30 @@ admin.initializeApp()
 const ninerouterKey = defineSecret('NINEROUTER_KEY')
 const ninerouterUrl = defineSecret('NINEROUTER_URL')
 const adminSecret = defineSecret('ADMIN_SECRET')
+const s2sSecret = defineSecret('S2S_SECRET')
 
 function sendJson(res, status, payload) {
   res.status(status).set('Content-Type', 'application/json').send(JSON.stringify(payload))
+}
+
+function safeEqual(a, b) {
+  const left = Buffer.from(String(a || ''))
+  const right = Buffer.from(String(b || ''))
+  return left.length === right.length && crypto.timingSafeEqual(left, right)
+}
+
+function requireS2S(req, res) {
+  const expected = s2sSecret.value() || process.env.S2S_SECRET
+  const authorization = req.get('authorization') || ''
+  const bearer = authorization.toLowerCase().startsWith('bearer ') ? authorization.slice(7).trim() : ''
+  const provided = bearer || req.get('x-s2s-key') || req.query.s2sKey
+
+  if (!expected || !provided || !safeEqual(provided, expected)) {
+    sendJson(res, 401, { error: 'unauthorized' })
+    return false
+  }
+
+  return true
 }
 
 function requireMethod(req, res, method) {
@@ -51,6 +72,29 @@ function upstreamHeaders() {
   const key = ninerouterKey.value() || process.env.NINEROUTER_KEY
   if (key) headers.Authorization = `Bearer ${key}`
   return headers
+}
+
+async function health(req, res) {
+  if (!requireMethod(req, res, 'GET')) return
+  sendJson(res, 200, {
+    ok: true,
+    service: 'chunks-mirror-api',
+    runtime: 'firebase-functions-v2',
+    region: 'asia-east1',
+    time: new Date().toISOString(),
+  })
+}
+
+async function s2sHealth(req, res) {
+  if (!requireMethod(req, res, 'GET')) return
+  if (!requireS2S(req, res)) return
+  sendJson(res, 200, {
+    ok: true,
+    authenticated: true,
+    service: 'chunks-mirror-s2s',
+    bucket: configuredBucket().name,
+    time: new Date().toISOString(),
+  })
 }
 
 async function proxyTts(req, res) {
@@ -285,6 +329,24 @@ async function deleteAudio(req, res) {
   }
 }
 
+async function s2sListAudio(req, res) {
+  if (!requireMethod(req, res, 'GET')) return
+  if (!requireS2S(req, res)) return
+  return listAudio(req, res)
+}
+
+async function s2sUploadAudio(req, res) {
+  if (!requireMethod(req, res, 'POST')) return
+  if (!requireS2S(req, res)) return
+  return uploadAudio(req, res)
+}
+
+async function s2sDeleteAudio(req, res) {
+  if (!requireMethod(req, res, 'POST')) return
+  if (!requireS2S(req, res)) return
+  return deleteAudio(req, res)
+}
+
 async function adminCleanup(req, res) {
   const secret = req.get('x-admin-secret') || req.query.secret
   const expected = adminSecret.value() || process.env.ADMIN_SECRET
@@ -338,9 +400,15 @@ exports.api = onRequest({
   memory: '512MiB',
   timeoutSeconds: 120,
   maxInstances: 5,
-  secrets: [ninerouterKey, ninerouterUrl, adminSecret],
+  secrets: [ninerouterKey, ninerouterUrl, adminSecret, s2sSecret],
 }, async (req, res) => {
   const route = requestRoute(req)
+
+  if (route === '/health') return health(req, res)
+  if (route === '/s2s/health') return s2sHealth(req, res)
+  if (route === '/s2s/list-audio') return s2sListAudio(req, res)
+  if (route === '/s2s/upload-audio') return s2sUploadAudio(req, res)
+  if (route === '/s2s/delete-audio') return s2sDeleteAudio(req, res)
 
   if (route === '/tts') return proxyTts(req, res)
   if (route === '/generate-text') return proxyGenerateText(req, res)

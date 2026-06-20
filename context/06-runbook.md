@@ -65,6 +65,30 @@ The app (after scaffold) consumes the same library + supports Sentence Form filt
 
 The app calls the **same-origin proxy** `POST /api/tts` (never 9router directly from the browser). Firebase Functions inject `NINEROUTER_KEY`, forward to `/v1/audio/speech`, return audio, and persist generated clips through `/api/upload-audio` to `gs://chunks-mirror-audio-284566312743/audio/` with `.meta.json` sidecars. Local `public/resources/audio/` remains the seed bank.
 
+### API readiness + server-to-server (S2S)
+
+Public readiness check:
+
+```bash
+curl https://chunks-mirror.web.app/api/health
+```
+
+Protected S2S endpoints require `S2S_SECRET` via either `Authorization: Bearer <secret>` or `X-S2S-Key: <secret>`:
+
+```bash
+curl -H "Authorization: Bearer $S2S_SECRET" \
+  https://chunks-mirror.web.app/api/s2s/health
+
+curl -H "Authorization: Bearer $S2S_SECRET" \
+  https://chunks-mirror.web.app/api/s2s/list-audio
+```
+
+Protected routes:
+- `GET /api/s2s/health` — authenticated readiness.
+- `GET /api/s2s/list-audio` — list Cloud Storage audio metadata.
+- `POST /api/s2s/upload-audio` — body `{ audioBase64, contentType, metadata }`.
+- `POST /api/s2s/delete-audio` — body `{ storagePath }` or `{ url }`.
+
 ## Import audio (curated or user upload)
 
 1. Provide file + license/provenance (CC0, CC-BY + attribution, paid pack, or self-made).
@@ -84,7 +108,7 @@ npm run preview   # serve the production build locally
 Production deploys are **not** part of v1. When the time comes:
 
 1. Clean working tree; `git commit`; `git tag vX.Y.Z`.
-2. Verify `/api/*` Firebase Functions are configured; set secrets: `firebase functions:secrets:set NINEROUTER_KEY` and optional `firebase functions:secrets:set ADMIN_SECRET`.
+2. Verify `/api/*` Firebase Functions are configured; set secrets: `firebase functions:secrets:set NINEROUTER_KEY`, `firebase functions:secrets:set S2S_SECRET`, and optional `firebase functions:secrets:set ADMIN_SECRET`.
 3. `firebase hosting:channel:deploy preview --only hosting:chunks-mirror,functions` → validate the preview/canary URL.
 4. Only then `firebase deploy --only hosting:chunks-mirror,functions` to production.
 5. **Rollback:** `firebase hosting:rollback`; redeploy the prior git tag/functions; verify Secret Manager values and `chunks-mirror-audio-284566312743` bucket access restored.
