@@ -48,7 +48,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const [panelOpen, setPanelOpen] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth >= 1024
   )
-  const [ereEvaluation, setEreEvaluation] = useState<EreEvaluationState>({ status: 'idle' })
+  const [, setEreEvaluation] = useState<EreEvaluationState>({ status: 'idle' })
   const [lastControlSignal, setLastControlSignal] = useState('')
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     mode: true,
@@ -174,6 +174,12 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
       return Boolean(el.closest(interactiveSelector))
     }
 
+    const isFormTarget = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null
+      if (!el) return false
+      return Boolean(el.closest('input, select, textarea, a, [contenteditable="true"]'))
+    }
+
     const runControl = (action: 'advance' | 'previous' | 'pause' | 'stop', signal: string, event: Event) => {
       const now = performance.now()
       if (now - controlDebounceRef.current < 260) return
@@ -222,17 +228,23 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
         'mediatrackprevious', 'mediaprevioustrack', 'browserback', 'audiovolumedown',
       ].some((name) => names.has(name))
       const pauseKey = ['mediaplaypause', '.', 'k', 'pause'].some((name) => names.has(name))
+      const stageIsArmed = document.activeElement === stageRef.current
+      const unknownPresenterKey = stageIsArmed && (key === 'unidentified' || code === 'unidentified')
 
       if (pauseKey) return runControl('pause', signal, e)
       if (previousKey) return runControl('previous', signal, e)
-      if (advanceKey) return runControl('advance', signal, e)
+      if (advanceKey || unknownPresenterKey) return runControl('advance', signal, e)
       if (e.key === 'Escape') return runControl('stop', signal, e)
     }
 
-    const onMouseUp = (e: MouseEvent) => {
+    const onMouseControl = (e: MouseEvent) => {
+      if (isFormTarget(e.target)) return
+      // button 1 = middle/scroll wheel; many presenter remotes map their centre
+      // control to middle/aux click instead of keyboard PageDown.
+      if (e.button === 1) return runControl('advance', 'mouse-middle', e)
+      if (e.button === 2) return runControl('previous', 'mouse-right', e)
       if (isInteractiveTarget(e.target)) return
-      if (e.button === 0) runControl('advance', 'mouse-left', e)
-      if (e.button === 2) runControl('previous', 'mouse-right', e)
+      if (e.button === 0) return runControl('advance', 'mouse-left', e)
     }
 
     const onContextMenu = (e: MouseEvent) => {
@@ -241,12 +253,18 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
 
     window.addEventListener('keydown', onKey, true)
     window.addEventListener('keyup', onKey, true)
-    window.addEventListener('mouseup', onMouseUp, true)
+    window.addEventListener('mousedown', onMouseControl, true)
+    window.addEventListener('mouseup', onMouseControl, true)
+    window.addEventListener('auxclick', onMouseControl, true)
+    window.addEventListener('pointerup', onMouseControl, true)
     window.addEventListener('contextmenu', onContextMenu, true)
     return () => {
       window.removeEventListener('keydown', onKey, true)
       window.removeEventListener('keyup', onKey, true)
-      window.removeEventListener('mouseup', onMouseUp, true)
+      window.removeEventListener('mousedown', onMouseControl, true)
+      window.removeEventListener('mouseup', onMouseControl, true)
+      window.removeEventListener('auxclick', onMouseControl, true)
+      window.removeEventListener('pointerup', onMouseControl, true)
       window.removeEventListener('contextmenu', onContextMenu, true)
     }
   }, [phase])
@@ -423,28 +441,8 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
           )}
         </div>
 
-        {current?.category === 'ere' && ereEvaluation.status !== 'idle' && (
-          <div className="w-full max-w-md rounded-[14px] border border-[--line] bg-[--bg-elev] px-4 py-3 text-left shadow-[0_24px_80px_-55px_rgba(0,0,0,0.9)]">
-            <div className="flex items-center justify-between gap-3">
-              <div className="font-mono text-[8px] uppercase tracking-[0.2em] text-[--fg-muted]">ERE evaluation</div>
-              {ereEvaluation.status === 'done' && (
-                <span className={`rounded-full px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.14em] ${ereEvaluation.result.passed ? 'bg-emerald-500/15 text-emerald-300' : 'bg-[--accent]/15 text-[--accent]'}`}>
-                  {ereEvaluation.result.passed ? 'Pass' : 'Not yet'} · {Math.round(ereEvaluation.result.score * 100)}%
-                </span>
-              )}
-            </div>
-            {ereEvaluation.status === 'previewing' && <p className="mt-2 text-sm text-[--fg]/80">Playing your recording back…</p>}
-            {ereEvaluation.status === 'recorded' && <p className="mt-2 text-sm text-[--fg]/80">Evaluation is off. Mirror recording preview finished; no STT or LLM comparison was run.</p>}
-            {ereEvaluation.status === 'evaluating' && <p className="mt-2 text-sm text-[--fg]/80">Transcribing and checking meaning…</p>}
-            {ereEvaluation.status === 'error' && <p className="mt-2 text-sm text-[--accent]">{ereEvaluation.message}</p>}
-            {ereEvaluation.status === 'done' && (
-              <div className="mt-2 space-y-2 text-sm leading-relaxed text-[--fg]/80">
-                <p><span className="text-[--fg-muted]">Transcript:</span> “{ereEvaluation.result.transcript || '—'}”</p>
-                <p><span className="text-[--fg-muted]">Feedback:</span> {ereEvaluation.result.feedback}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* ERE evaluation result panel intentionally hidden in this preview phase.
+            The loop still logs status internally; UI stays focused on play/mirror only. */}
 
         {/* Self-paced / manual hint */}
         {(phase === 'idle' || phase === 'waitingNext' || isAwaitingCopy) && (
