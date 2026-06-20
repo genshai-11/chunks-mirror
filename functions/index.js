@@ -218,13 +218,21 @@ function firstChatContent(payload) {
   return String(content || '').trim()
 }
 
+function contentText(value) {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) {
+    return value.map((part) => typeof part === 'string' ? part : part.text || '').join('')
+  }
+  return ''
+}
+
 function parseChatCompletionResponse(text) {
   const raw = String(text || '').trim()
   if (!raw) return {}
   try { return JSON.parse(raw) } catch {}
 
   // Some 9router/model responses come back as Server-Sent Events:
-  //   data: {"id":"...","choices":[...]}
+  //   data: {"id":"...","choices":[{"delta":{"content":"..."}}]}
   //   data: [DONE]
   const dataLines = raw
     .split(/\r?\n/)
@@ -233,8 +241,22 @@ function parseChatCompletionResponse(text) {
     .map((line) => line.slice(5).trim())
     .filter((line) => line && line !== '[DONE]')
 
-  for (let i = dataLines.length - 1; i >= 0; i -= 1) {
-    try { return JSON.parse(dataLines[i]) } catch {}
+  const chunks = []
+  for (const line of dataLines) {
+    try { chunks.push(JSON.parse(line)) } catch {}
+  }
+
+  const streamed = chunks
+    .map((chunk) => contentText(chunk?.choices?.[0]?.delta?.content || chunk?.choices?.[0]?.message?.content))
+    .join('')
+    .trim()
+
+  if (streamed) {
+    return { choices: [{ message: { content: streamed } }] }
+  }
+
+  for (let i = chunks.length - 1; i >= 0; i -= 1) {
+    if (chunks[i] && Object.keys(chunks[i]).length > 0) return chunks[i]
   }
 
   throw new Error(`Could not parse 9router response: ${raw.slice(0, 300)}`)
