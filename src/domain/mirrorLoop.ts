@@ -194,10 +194,9 @@ export class MirrorLoopController {
 
     if (!this.isRunning) return
 
-    // Self-paced gate: wait for a tap before recording C.
-    // ERE always requires learner readiness before recording, independent of mode
-    // and independent of whether semantic evaluation is enabled.
-    if (settings.gateBeforeCopy || this.current.category === 'ere') {
+    // Self-paced gate: wait for a tap before recording C (offline/custom or explicit setting).
+    // ERE evaluation ON/OFF does not affect this; ERE follows the selected mode.
+    if (settings.gateBeforeCopy) {
       this.setPhase('awaitingCopy')
       this.opts.onLog('Ready when you are ▸ tap to mirror')
       return

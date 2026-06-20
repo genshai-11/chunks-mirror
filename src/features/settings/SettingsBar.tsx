@@ -35,20 +35,15 @@ function SegmentButton({ active, children, onClick }: { active: boolean; childre
 
 export default function SettingsBar({ settings, onChange, availableLangs }: Props) {
   const isEre = settings.category === 'ere'
-  const withErePracticeFlow = (next: RoomSettings): RoomSettings => (
-    next.category === 'ere'
-      ? { ...next, gateBeforeCopy: true, autoAdvance: false }
-      : next
-  )
-  const set = <K extends keyof RoomSettings>(key: K, value: RoomSettings[K]) => onChange(withErePracticeFlow({ ...settings, [key]: value }))
-  const setMode = (mode: RoomSettings['mode']) => onChange(withErePracticeFlow(applyMode(settings, mode)))
-  const setCategory = (category: RoomSettings['category']) => onChange(withErePracticeFlow({
+  const set = <K extends keyof RoomSettings>(key: K, value: RoomSettings[K]) => onChange({ ...settings, [key]: value })
+  const setMode = (mode: RoomSettings['mode']) => onChange(applyMode(settings, mode))
+  const setCategory = (category: RoomSettings['category']) => onChange({
     ...settings,
     category,
     ...(category === 'ere'
       ? { level: '', sentenceForm: 'all' as const }
       : { ereTopic: '', erePart: '', ereEvaluationEnabled: false }),
-  }))
+  })
 
   return (
     <section className="rounded-[18px] border border-[--line] bg-[--bg-elev]">
@@ -144,8 +139,8 @@ export default function SettingsBar({ settings, onChange, availableLangs }: Prop
         {isEre && <Check label="ERE evaluation (STT + compare)" checked={Boolean(settings.ereEvaluationEnabled)} onChange={(v) => set('ereEvaluationEnabled', v)} />}
         {modeIsDynamic(settings.mode) ? (
           <>
-            <Check label="Auto-advance" checked={!isEre && settings.autoAdvance} onChange={(v) => set('autoAdvance', isEre ? false : v)} />
-            <Check label="Pause before mirror" checked={isEre || settings.gateBeforeCopy} onChange={(v) => set('gateBeforeCopy', isEre ? true : v)} />
+            <Check label="Auto-advance" checked={settings.autoAdvance} onChange={(v) => set('autoAdvance', v)} />
+            <Check label="Pause before mirror" checked={settings.gateBeforeCopy} onChange={(v) => set('gateBeforeCopy', v)} />
             <Check label="Cue · listen (G→O)" checked={settings.cueOnListen} onChange={(v) => set('cueOnListen', v)} />
             <Check label="Cue · mirror (O→C)" checked={settings.cueOnMirror} onChange={(v) => set('cueOnMirror', v)} />
             <Check label="Cue · end (C→next)" checked={settings.cueOnEnd} onChange={(v) => set('cueOnEnd', v)} />

@@ -68,6 +68,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const controllerRef = useRef<MirrorLoopController | null>(null)
   const copyPreviewUrlRef = useRef<string | null>(null)
   const controlDebounceRef = useRef(0)
+  const stageRef = useRef<HTMLDivElement | null>(null)
 
   // Live refs so the controller reads current settings/pool without being recreated.
   // Recreating it would reset the loop to idle — fatal for the dynamic offline/custom
@@ -271,24 +272,23 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const set = <K extends keyof RoomSettings>(key: K, val: RoomSettings[K]) =>
     applySettingsChange({ ...settings, [key]: val })
 
-  const withErePracticeFlow = (next: RoomSettings): RoomSettings => (
-    next.category === 'ere'
-      ? { ...next, gateBeforeCopy: true, autoAdvance: false }
-      : next
-  )
-
   const setMode = (mode: RoomSettings['mode']) => {
-    applySettingsChange(withErePracticeFlow(applyMode(settings, mode)))
+    applySettingsChange(applyMode(settings, mode))
   }
 
   const setCategory = (category: RoomSettings['category']) => {
-    applySettingsChange(withErePracticeFlow({
+    applySettingsChange({
       ...settings,
       category,
       ...(category === 'ere'
         ? { level: '', sentenceForm: 'all' as const }
         : { ereTopic: '', erePart: '', ereEvaluationEnabled: false }),
-    }))
+    })
+  }
+
+  const focusRemoteStage = () => {
+    stageRef.current?.focus()
+    setLastControlSignal('armed')
   }
 
   const isListening = phase === 'playingOriginal'
@@ -312,7 +312,12 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   return (
     <main className="flex min-h-[100dvh] overflow-x-hidden bg-[--bg] text-[--fg]">
       {/* ─── Training area ──────────────────────────────────────── */}
-      <div className="relative flex flex-1 flex-col items-center justify-center gap-8 px-5 py-20 sm:gap-10 sm:px-6 sm:py-16">
+      <div
+        ref={stageRef}
+        tabIndex={0}
+        onClick={focusRemoteStage}
+        className="relative flex flex-1 flex-col items-center justify-center gap-8 px-5 py-20 outline-none sm:gap-10 sm:px-6 sm:py-16"
+      >
 
         {/* Top bar */}
         <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 pt-[max(0.9rem,env(safe-area-inset-top))] pb-3 sm:px-5 sm:py-4">
@@ -320,6 +325,14 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
             CHUNKS MIRROR
           </span>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={focusRemoteStage}
+              className="hidden rounded-full border border-[--line] px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.14em] text-[--fg-muted] hover:border-[--accent] hover:text-[--fg] sm:inline-flex"
+              title="Click once before using a presenter remote/clicker"
+            >
+              Arm remote
+            </button>
             <span className="hidden font-mono text-[9px] uppercase tracking-[0.16em] text-[--fg-muted] sm:inline">
               {pool.length} in pool
             </span>
@@ -535,8 +548,8 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   <ToggleRow
                     label="Pause before mirror"
                     hint="Wait for a tap before recording C"
-                    checked={isEre || settings.gateBeforeCopy}
-                    onChange={(v) => set('gateBeforeCopy', isEre ? true : v)}
+                    checked={settings.gateBeforeCopy}
+                    onChange={(v) => set('gateBeforeCopy', v)}
                   />
                 </div>
               </Accordion>
