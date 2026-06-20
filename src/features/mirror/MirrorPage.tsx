@@ -271,14 +271,24 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
   const set = <K extends keyof RoomSettings>(key: K, val: RoomSettings[K]) =>
     applySettingsChange({ ...settings, [key]: val })
 
+  const withErePracticeFlow = (next: RoomSettings): RoomSettings => (
+    next.category === 'ere'
+      ? { ...next, gateBeforeCopy: true, autoAdvance: false }
+      : next
+  )
+
+  const setMode = (mode: RoomSettings['mode']) => {
+    applySettingsChange(withErePracticeFlow(applyMode(settings, mode)))
+  }
+
   const setCategory = (category: RoomSettings['category']) => {
-    applySettingsChange({
+    applySettingsChange(withErePracticeFlow({
       ...settings,
       category,
       ...(category === 'ere'
         ? { level: '', sentenceForm: 'all' as const }
         : { ereTopic: '', erePart: '', ereEvaluationEnabled: false }),
-    })
+    }))
   }
 
   const isListening = phase === 'playingOriginal'
@@ -498,7 +508,7 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   <button
                     key={m}
                     type="button"
-                    onClick={() => applySettingsChange(applyMode(settings, m))}
+                    onClick={() => setMode(m)}
                     className={`rounded-[7px] border py-2 font-mono text-[9px] uppercase tracking-[0.14em] transition-colors ${
                       settings.mode === m
                         ? 'border-[--accent] bg-[--accent] text-white'
@@ -525,8 +535,8 @@ export default function MirrorPage({ settings, pool, onLog, onSettingsChange, av
                   <ToggleRow
                     label="Pause before mirror"
                     hint="Wait for a tap before recording C"
-                    checked={settings.gateBeforeCopy}
-                    onChange={(v) => set('gateBeforeCopy', v)}
+                    checked={isEre || settings.gateBeforeCopy}
+                    onChange={(v) => set('gateBeforeCopy', isEre ? true : v)}
                   />
                 </div>
               </Accordion>
