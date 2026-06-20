@@ -218,6 +218,28 @@ function firstChatContent(payload) {
   return String(content || '').trim()
 }
 
+function parseChatCompletionResponse(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return {}
+  try { return JSON.parse(raw) } catch {}
+
+  // Some 9router/model responses come back as Server-Sent Events:
+  //   data: {"id":"...","choices":[...]}
+  //   data: [DONE]
+  const dataLines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trim())
+    .filter((line) => line && line !== '[DONE]')
+
+  for (let i = dataLines.length - 1; i >= 0; i -= 1) {
+    try { return JSON.parse(dataLines[i]) } catch {}
+  }
+
+  throw new Error(`Could not parse 9router response: ${raw.slice(0, 300)}`)
+}
+
 async function chatCompletion({ model, messages, temperature = 0, responseFormat }) {
   const body = { model, messages, temperature }
   if (responseFormat) body.response_format = responseFormat
@@ -228,14 +250,14 @@ async function chatCompletion({ model, messages, temperature = 0, responseFormat
     body: JSON.stringify(body),
   })
 
+  const text = await upstreamRes.text().catch(() => '')
   if (!upstreamRes.ok) {
-    const text = await upstreamRes.text().catch(() => '')
     const error = new Error(`9router upstream ${upstreamRes.status}: ${text.slice(0, 500)}`)
     error.status = upstreamRes.status
     throw error
   }
 
-  return upstreamRes.json()
+  return parseChatCompletionResponse(text)
 }
 
 function downloadUrl(bucketName, pathname) {
